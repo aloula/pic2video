@@ -31,7 +31,13 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Scope is intentionally small and focused on one clear user outcome.
+- Design keeps complexity minimal; any non-trivial pattern has explicit justification.
+- Clean code approach is defined (naming, module boundaries, duplication control).
+- Unit test strategy is explicit for each functional requirement.
+- E2E test strategy is explicit for each primary user journey.
+- Documentation impact is explicit; README update requirement is addressed when usage/build/run changes.
+- Red-green-refactor sequence is planned before implementation tasks.
 
 ## Project Structure
 

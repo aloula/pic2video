@@ -1,0 +1,25 @@
+# Go
+*.exe
+*.test
+*.out
+bin/
+coverage/
+
+# Build artifacts
+dist/
+build/
+
+# Dependencies/vendor (optional; keep if vendoring policy changes)
+vendor/
+
+# Environment
+.env
+.env.*
+
+# Editor/OS
+.DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/

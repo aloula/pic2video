@@ -1,0 +1,85 @@
+package cli
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/loula/pic2video/internal/app/pipeline"
+	"github.com/loula/pic2video/internal/app/renderjob"
+	"github.com/loula/pic2video/internal/infra/fsio"
+	"github.com/loula/pic2video/internal/infra/nvenc"
+	"github.com/spf13/cobra"
+)
+
+func newRenderCommand() *cobra.Command {
+	var input, output, profileName, orderMode, orderFile, encoder string
+	var imageDur, transDur float64
+	var overwrite bool
+	var ffmpegBin, ffprobeBin string
+
+	cmd := &cobra.Command{
+		Use:   "render",
+		Short: "Render slideshow from image folder",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if input == "" || output == "" || profileName == "" {
+				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--input, --output and --profile are required"}
+			}
+			if orderMode != "name" && orderMode != "time" && orderMode != "explicit" {
+				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--order must be one of name|time|explicit"}
+			}
+			if orderMode == "explicit" && orderFile == "" {
+				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--order-file required for --order explicit"}
+			}
+			assets, err := fsio.ListImageAssets(input)
+			if err != nil {
+				return &renderjob.ClassifiedError{Class: renderjob.ErrInputValidation, Msg: "failed to read input assets", Err: err}
+			}
+			explicit := []string(nil)
+			if orderMode == "explicit" {
+				explicit, err = fsio.ReadExplicitOrder(orderFile)
+				if err != nil {
+					return &renderjob.ClassifiedError{Class: renderjob.ErrInputValidation, Msg: "failed to parse explicit order file", Err: err}
+				}
+			}
+			assets = pipeline.ApplyOrder(orderMode, assets, explicit)
+			job, err := renderjob.BuildJob(renderjob.BuildOptions{
+				OutputPath:      output,
+				ProfileName:     profileName,
+				ImageDuration:   imageDur,
+				Transition:      transDur,
+				Overwrite:       overwrite,
+				OrderMode:       orderMode,
+				OrderFile:       orderFile,
+				RequestedEncode: encoder,
+				FFmpegBin:       ffmpegBin,
+				FFprobeBin:      ffprobeBin,
+			}, assets)
+			if err != nil {
+				return err
+			}
+			service := &renderjob.Service{}
+			summary, err := service.Run(context.Background(), job)
+			if err != nil {
+				return err
+			}
+			has := nvenc.Available(ffmpegBin)
+			fmt.Fprintln(cmd.OutOrStdout(), FormatSummary(summary.ProfileName, summary.EffectiveResolution, encoder, summary.EffectiveEncoder, summary.OutputPath, summary.ElapsedSeconds, summary.ProcessedAssets, summary.Warnings, has))
+			return nil
+		},
+	}
+
+	cmd.Flags().StringVar(&input, "input", "", "Input directory containing images")
+	cmd.Flags().StringVar(&output, "output", "", "Output video path")
+	cmd.Flags().StringVar(&profileName, "profile", "", "Output profile: fhd|uhd")
+	cmd.Flags().Float64Var(&imageDur, "image-duration", 4, "Per-image duration in seconds")
+	cmd.Flags().Float64Var(&transDur, "transition-duration", 1, "Cross-fade transition duration in seconds")
+	cmd.Flags().StringVar(&orderMode, "order", "name", "Ordering mode: name|time|explicit")
+	cmd.Flags().StringVar(&orderFile, "order-file", "", "Path to explicit order manifest file")
+	cmd.Flags().StringVar(&encoder, "encoder", "auto", "Encoder preference: auto|nvenc|cpu")
+	cmd.Flags().BoolVar(&overwrite, "overwrite", false, "Overwrite output file if it exists")
+	cmd.Flags().StringVar(&ffmpegBin, "ffmpeg-bin", envOrDefault("P2V_FFMPEG_BIN", "ffmpeg"), "Path to ffmpeg binary")
+	cmd.Flags().StringVar(&ffprobeBin, "ffprobe-bin", envOrDefault("P2V_FFPROBE_BIN", "ffprobe"), "Path to ffprobe binary")
+	_ = cmd.Flags().MarkHidden("ffmpeg-bin")
+	_ = cmd.Flags().MarkHidden("ffprobe-bin")
+	return cmd
+}
