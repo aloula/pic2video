@@ -14,6 +14,10 @@ func BuildRenderCommandArgs(outputPath string, assets []media.Asset, imageDur, t
 }
 
 func BuildRenderCommandArgsWithEffect(outputPath string, assets []media.Asset, imageEffect string, imageDur, transitionDur float64, width, height int, encoder string) []string {
+	return BuildRenderCommandArgsWithEffectAndAudio(outputPath, assets, nil, imageEffect, imageDur, transitionDur, width, height, encoder)
+}
+
+func BuildRenderCommandArgsWithEffectAndAudio(outputPath string, assets []media.Asset, audioAssets []string, imageEffect string, imageDur, transitionDur float64, width, height int, encoder string) []string {
 	inputs := []string{}
 	useStaticInputs := imageEffect == "" || imageEffect == "static"
 	for _, a := range assets {
@@ -25,6 +29,9 @@ func BuildRenderCommandArgsWithEffect(outputPath string, assets []media.Asset, i
 			inputs = append(inputs, "-i", a.Path)
 		}
 	}
+	for _, audioPath := range audioAssets {
+		inputs = append(inputs, "-i", audioPath)
+	}
 	graph := pipeline.BuildXFadeGraphWithEffect(len(assets), imageDur, transitionDur, imageEffect, width, height)
 	if useStaticInputs {
 		framing := pipeline.BuildFramingFilter(width, height)
@@ -32,6 +39,9 @@ func BuildRenderCommandArgsWithEffect(outputPath string, assets []media.Asset, i
 	}
 	if fadeFilter := buildGlobalFadeFilter(len(assets), imageDur, transitionDur); fadeFilter != "" {
 		graph = strings.Replace(graph, "[vlast]", "[vtmp]", 1) + ";[vtmp]" + fadeFilter + "[vlast]"
+	}
+	if audioFilter := buildAudioFilter(len(assets), len(audioAssets), imageDur, transitionDur); audioFilter != "" {
+		graph += ";" + audioFilter
 	}
 	args := []string{"-y"}
 	args = append(args, inputs...)
@@ -42,6 +52,14 @@ func BuildRenderCommandArgsWithEffect(outputPath string, assets []media.Asset, i
 		"-pix_fmt", "yuv420p",
 		"-movflags", "+faststart",
 		"-r", "30",
+	)
+	if len(audioAssets) > 0 {
+		args = append(args,
+			"-map", "[aout]",
+			"-c:a", "aac",
+		)
+	}
+	args = append(args,
 		"-shortest",
 		filepath.Clean(outputPath),
 	)
@@ -76,4 +94,22 @@ func totalVideoDuration(assetCount int, imageDur, transitionDur float64) float64
 		return imageDur
 	}
 	return float64(assetCount)*imageDur - float64(assetCount-1)*transitionDur
+}
+
+func buildAudioFilter(videoInputCount, audioInputCount int, imageDur, transitionDur float64) string {
+	if audioInputCount <= 0 {
+		return ""
+	}
+	total := totalVideoDuration(videoInputCount, imageDur, transitionDur)
+	if total <= 0 {
+		return ""
+	}
+	labels := make([]string, 0, audioInputCount)
+	for i := 0; i < audioInputCount; i++ {
+		labels = append(labels, fmt.Sprintf("[%d:a]", videoInputCount+i))
+	}
+	if audioInputCount == 1 {
+		return fmt.Sprintf("%satrim=duration=%.3f,asetpts=N/SR/TB[aout]", labels[0], total)
+	}
+	return fmt.Sprintf("%sconcat=n=%d:v=0:a=1[aud];[aud]atrim=duration=%.3f,asetpts=N/SR/TB[aout]", strings.Join(labels, ""), audioInputCount, total)
 }

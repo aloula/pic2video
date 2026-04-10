@@ -47,9 +47,10 @@ func (s *Service) Run(ctx context.Context, job RenderJob) (RenderSummary, error)
 		return BuildSummary(job, started, "failed", ce), ce
 	}
 	job.Warnings = EvaluateQualityWarnings(job, job.InputAssets)
-	args := ffmpeg.BuildRenderCommandArgsWithEffect(
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudio(
 		job.OutputPath,
 		job.InputAssets,
+		job.AudioAssets,
 		job.ImageEffect,
 		job.ImageDurationSec,
 		job.TransitionDurationSec,

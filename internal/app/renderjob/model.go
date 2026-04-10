@@ -9,6 +9,7 @@ import (
 
 type RenderJob struct {
 	InputAssets           []media.Asset
+	AudioAssets           []string
 	OutputPath            string
 	Profile               profile.Profile
 	ImageEffect           string

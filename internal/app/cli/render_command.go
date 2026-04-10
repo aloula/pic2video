@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/loula/pic2video/internal/app/pipeline"
 	"github.com/loula/pic2video/internal/app/renderjob"
@@ -54,6 +55,17 @@ func newRenderCommand() *cobra.Command {
 			if err != nil {
 				return &renderjob.ClassifiedError{Class: renderjob.ErrInputValidation, Msg: "failed to read input assets", Err: err}
 			}
+			audioAssets, err := fsio.ListMP3Assets(input)
+			if err != nil {
+				return &renderjob.ClassifiedError{Class: renderjob.ErrInputValidation, Msg: "failed to read input audio assets", Err: err}
+			}
+			for _, p := range audioAssets {
+				f, openErr := os.Open(p)
+				if openErr != nil {
+					return &renderjob.ClassifiedError{Class: renderjob.ErrInputValidation, Msg: "failed to open audio asset", Err: openErr}
+				}
+				_ = f.Close()
+			}
 			explicit := []string(nil)
 			if orderMode == "explicit" {
 				explicit, err = fsio.ReadExplicitOrder(orderFile)
@@ -62,6 +74,10 @@ func newRenderCommand() *cobra.Command {
 				}
 			}
 			assets = pipeline.ApplyOrderExt(orderMode, assets, explicit, ffprobeBin)
+			audioOrder := "-"
+			if len(audioAssets) > 0 {
+				audioOrder = "alphabetical"
+			}
 			fmt.Fprintln(cmd.OutOrStdout(), FormatAnnouncement(StartOptions{
 				Input:              input,
 				Output:             output,
@@ -71,12 +87,15 @@ func newRenderCommand() *cobra.Command {
 				TransitionDuration: transDur,
 				Order:              orderMode,
 				OrderFile:          orderFile,
+				AudioFiles:         len(audioAssets),
+				AudioOrder:         audioOrder,
 				Encoder:            encoder,
 				Overwrite:          overwrite,
 				Files:              len(assets),
 			}))
 			job, err := renderjob.BuildJob(renderjob.BuildOptions{
 				OutputPath:      output,
+				AudioAssets:     audioAssets,
 				ProfileName:     profileName,
 				ImageEffect:     imageEffect,
 				ImageDuration:   imageDur,

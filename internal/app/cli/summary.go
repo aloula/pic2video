@@ -18,6 +18,8 @@ type StartOptions struct {
 	TransitionDuration float64
 	Order              string
 	OrderFile          string
+	AudioFiles         int
+	AudioOrder         string
 	Encoder            string
 	Overwrite          bool
 	Files              int
@@ -49,12 +51,17 @@ func FormatAnnouncement(opts StartOptions) string {
 	if strings.TrimSpace(orderFile) == "" {
 		orderFile = "-"
 	}
+	audioOrder := opts.AudioOrder
+	if strings.TrimSpace(audioOrder) == "" {
+		audioOrder = "-"
+	}
 
 	return fmt.Sprintf(
 		"status=starting files=%d format=%s\n"+
 			"details: input=%s output=%s profile=%s effect=%s encoder=%s overwrite=%t\n"+
 			"timing: image-duration=%.1fs transition-duration=%.1fs\n"+
-			"order: mode=%s order-file=%s",
+			"order: mode=%s order-file=%s\n"+
+			"audio: files=%d order=%s",
 		opts.Files,
 		FormatOutputFormat(opts.Output),
 		opts.Input,
@@ -67,6 +74,8 @@ func FormatAnnouncement(opts StartOptions) string {
 		opts.TransitionDuration,
 		opts.Order,
 		orderFile,
+		opts.AudioFiles,
+		audioOrder,
 	)
 }
 

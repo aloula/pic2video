@@ -85,6 +85,8 @@ func TestFormatAnnouncement(t *testing.T) {
 		TransitionDuration: 1,
 		Order:              "exif",
 		OrderFile:          "",
+		AudioFiles:         2,
+		AudioOrder:         "alphabetical",
 		Encoder:            "auto",
 		Overwrite:          true,
 		Files:              3,
@@ -112,5 +114,8 @@ func TestFormatAnnouncement(t *testing.T) {
 	}
 	if !strings.Contains(got, "order-file=-") {
 		t.Fatalf("expected order-file placeholder when missing: %s", got)
+	}
+	if !strings.Contains(got, "audio: files=2 order=alphabetical") {
+		t.Fatalf("expected audio summary in startup announcement: %s", got)
 	}
 }

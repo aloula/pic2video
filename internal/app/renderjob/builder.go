@@ -7,6 +7,7 @@ import (
 
 type BuildOptions struct {
 	OutputPath      string
+	AudioAssets     []string
 	ProfileName     string
 	ImageEffect     string
 	ImageDuration   float64
@@ -26,6 +27,7 @@ func BuildJob(opts BuildOptions, assets []media.Asset) (RenderJob, error) {
 	}
 	return RenderJob{
 		InputAssets:           assets,
+		AudioAssets:           opts.AudioAssets,
 		OutputPath:            opts.OutputPath,
 		Profile:               p,
 		ImageEffect:           opts.ImageEffect,

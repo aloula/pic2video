@@ -87,6 +87,14 @@ Force CPU encoding:
   --encoder cpu
 ```
 
+Render with auto-detected MP3 background audio from input directory:
+
+```bash
+./bin/pic2video render \
+  --input ./photos-with-audio \
+  --profile uhd
+```
+
 Status output example:
 
 ```text
@@ -94,6 +102,7 @@ status=starting files=3 format=MP4
 details: input=./photos output=./out/slideshow-cpu.mp4 profile=fhd effect=kenburns-medium encoder=auto overwrite=true
 timing: image-duration=5.0s transition-duration=1.0s
 order: mode=exif order-file=-
+audio: files=2 order=alphabetical
 status=success
 result: profile=fhd resolution=1920x1080 encoder:auto->nvenc processed=3 files=3
 output: format=MP4 elapsed=< 1s output=./out/slideshow-cpu.mp4 warnings=0
@@ -154,6 +163,7 @@ EXIF date-based ordering (use photo capture time):
 - `files=<N>`: number of input images processed
 - `format=<EXT>`: output container label derived from output extension (for example, `MP4`, `MOV`, `AVI`, `UNKNOWN`)
 - `elapsed=<value>`: human-readable processing time
+- `audio: files=<N> order=<MODE>`: discovered MP3 file count and ordering mode (`alphabetical` or `-` when no MP3 is present)
 
 Elapsed format rules:
 
@@ -172,7 +182,10 @@ Elapsed format rules:
 ## Validation policy (invalid media)
 
 - The CLI scans supported image extensions only (`.jpg`, `.jpeg`, `.png`, `.webp`).
+- The CLI also scans `.mp3` files in the same input directory and includes them in ascending alphabetical filename order.
 - Unsupported files are skipped during asset discovery.
+- Unsupported audio types (for example `.wav`) are ignored.
+- If discovered MP3 files cannot be opened, rendering fails with input-validation error (exit `3`).
 - If no supported images remain, the command fails with input-validation error (exit `3`).
 - Rendering requires at least 2 valid image assets; otherwise the command fails with exit `3`.
 - For explicit ordering mode, invalid/missing manifest entries cause input-validation failure (exit `3`).

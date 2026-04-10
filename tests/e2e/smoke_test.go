@@ -42,6 +42,9 @@ func TestSmoke(t *testing.T) {
 	if !strings.Contains(output, "mode=") || !strings.Contains(output, "order-file=") {
 		t.Fatalf("expected order options in startup announcement: %s", output)
 	}
+	if !strings.Contains(output, "audio:") || !strings.Contains(output, "files=0") {
+		t.Fatalf("expected audio startup options in startup announcement: %s", output)
+	}
 	if !strings.Contains(output, "status=success") {
 		t.Fatalf("expected completion status: %s", output)
 	}
