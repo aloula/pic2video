@@ -15,7 +15,7 @@ Emitted once to stdout **before** FFmpeg encoding begins, after input assets are
 **Format**:
 ```
 status=starting files=<N> format=<FORMAT>
-details: input=<DIR> output=<PATH> profile=<PROFILE> encoder=<ENCODER> overwrite=<BOOL>
+details: input=<DIR> output=<PATH> profile=<PROFILE> effect=<EFFECT> encoder=<ENCODER> overwrite=<BOOL>
 timing: image-duration=<SECONDS>s transition-duration=<SECONDS>s
 order: mode=<ORDER_MODE> order-file=<ORDER_FILE|->
 ```
@@ -26,14 +26,14 @@ order: mode=<ORDER_MODE> order-file=<ORDER_FILE|->
 | `status` | string | Always `starting` |
 | `files` | int | Number of input image files after ordering |
 | `format` | string | Uppercased container label derived from `--output` extension (e.g., `MP4`, `MOV`). `UNKNOWN` if no extension. |
-| `details` | section | Selected runtime options for the current run (`input`, `output`, `profile`, `encoder`, `overwrite`) |
+| `details` | section | Selected runtime options for the current run (`input`, `output`, `profile`, `effect`, `encoder`, `overwrite`) |
 | `timing` | section | Timing options (`image-duration`, `transition-duration`) |
 | `order` | section | Ordering options (`mode`, `order-file`; `-` when not applicable) |
 
 **Example**:
 ```
 status=starting files=20 format=MP4
-details: input=./photos output=slideshow_uhd.mp4 profile=uhd encoder=auto overwrite=true
+details: input=./photos output=slideshow_uhd.mp4 profile=uhd effect=kenburns-medium encoder=auto overwrite=true
 timing: image-duration=5.0s transition-duration=1.0s
 order: mode=exif order-file=-
 ```

@@ -1,13 +1,14 @@
 package renderjob
 
 import (
-"github.com/loula/pic2video/internal/domain/media"
-"github.com/loula/pic2video/internal/domain/profile"
+	"github.com/loula/pic2video/internal/domain/media"
+	"github.com/loula/pic2video/internal/domain/profile"
 )
 
 type BuildOptions struct {
 	OutputPath      string
 	ProfileName     string
+	ImageEffect     string
 	ImageDuration   float64
 	Transition      float64
 	Overwrite       bool
@@ -27,6 +28,7 @@ func BuildJob(opts BuildOptions, assets []media.Asset) (RenderJob, error) {
 		InputAssets:           assets,
 		OutputPath:            opts.OutputPath,
 		Profile:               p,
+		ImageEffect:           opts.ImageEffect,
 		ImageDurationSec:      opts.ImageDuration,
 		TransitionDurationSec: opts.Transition,
 		Overwrite:             opts.Overwrite,

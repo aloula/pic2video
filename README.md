@@ -65,6 +65,7 @@ Render FHD with custom output location:
 ```bash
 ./bin/pic2video render \
   --profile fhd \
+  --image-effect kenburns-medium \
   --output ./out/slideshow.mp4
 ```
 
@@ -90,12 +91,21 @@ Status output example:
 
 ```text
 status=starting files=3 format=MP4
-details: input=./photos output=./out/slideshow-cpu.mp4 profile=fhd encoder=auto overwrite=true
+details: input=./photos output=./out/slideshow-cpu.mp4 profile=fhd effect=kenburns-medium encoder=auto overwrite=true
 timing: image-duration=5.0s transition-duration=1.0s
 order: mode=exif order-file=-
 status=success
 result: profile=fhd resolution=1920x1080 encoder:auto->nvenc processed=3 files=3
 output: format=MP4 elapsed=< 1s output=./out/slideshow-cpu.mp4 warnings=0
+```
+
+Use Ken Burns effect (resolution-aware, high quality):
+
+```bash
+./bin/pic2video render \
+  --input ./photos \
+  --profile uhd \
+  --image-effect kenburns-high
 ```
 
 Explicit ordering:
@@ -121,6 +131,11 @@ EXIF date-based ordering (use photo capture time):
 - `--input <dir>` (default: current directory)
 - `--output <file>` (default: `slideshow_fhd.mp4` or `slideshow_uhd.mp4` based on profile)
 - `--profile <fhd|uhd>` (default: `uhd`)
+- `--image-effect <static|kenburns-low|kenburns-medium|kenburns-high>` (default: `static`)
+  - `static`: no zoom/pan motion
+  - `kenburns-low`: subtle slow motion
+  - `kenburns-medium`: balanced cinematic motion
+  - `kenburns-high`: stronger cinematic motion
 - `--image-duration <seconds>` (default: `5`)
 - `--transition-duration <seconds>` (default: `1`)
 - `--order <name|time|exif|explicit>` (default: `name`)

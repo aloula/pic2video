@@ -1,26 +1,27 @@
 package renderjob
 
 import (
-"time"
+	"time"
 
-"github.com/loula/pic2video/internal/domain/media"
-"github.com/loula/pic2video/internal/domain/profile"
+	"github.com/loula/pic2video/internal/domain/media"
+	"github.com/loula/pic2video/internal/domain/profile"
 )
 
 type RenderJob struct {
-	InputAssets            []media.Asset
-	OutputPath             string
-	Profile                profile.Profile
-	ImageDurationSec       float64
-	TransitionDurationSec  float64
-	Overwrite              bool
-	OrderMode              string
-	OrderFile              string
-	RequestedEncoder       string
-	EffectiveEncoder       string
-	Warnings               []string
-	FFmpegBin              string
-	FFprobeBin             string
+	InputAssets           []media.Asset
+	OutputPath            string
+	Profile               profile.Profile
+	ImageEffect           string
+	ImageDurationSec      float64
+	TransitionDurationSec float64
+	Overwrite             bool
+	OrderMode             string
+	OrderFile             string
+	RequestedEncoder      string
+	EffectiveEncoder      string
+	Warnings              []string
+	FFmpegBin             string
+	FFprobeBin            string
 }
 
 type RenderSummary struct {

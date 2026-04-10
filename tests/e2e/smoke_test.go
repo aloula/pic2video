@@ -33,7 +33,7 @@ func TestSmoke(t *testing.T) {
 	if !strings.Contains(output, "order:") {
 		t.Fatalf("expected order section in startup announcement: %s", output)
 	}
-	if !strings.Contains(output, "input=") || !strings.Contains(output, "output=") || !strings.Contains(output, "profile=") || !strings.Contains(output, "encoder=") || !strings.Contains(output, "overwrite=") {
+	if !strings.Contains(output, "input=") || !strings.Contains(output, "output=") || !strings.Contains(output, "profile=") || !strings.Contains(output, "effect=") || !strings.Contains(output, "encoder=") || !strings.Contains(output, "overwrite=") {
 		t.Fatalf("expected full startup options in details section: %s", output)
 	}
 	if !strings.Contains(output, "image-duration=") || !strings.Contains(output, "transition-duration=") {

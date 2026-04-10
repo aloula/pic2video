@@ -25,7 +25,7 @@ pic2video render \
 
 # stdout:
 # status=starting files=12 format=MP4
-# details: input=./photos output=./slideshow.mp4 profile=fhd encoder=auto overwrite=true
+# details: input=./photos output=./slideshow.mp4 profile=fhd effect=static encoder=auto overwrite=true
 # timing: image-duration=5.0s transition-duration=1.0s
 # order: mode=name order-file=-
 # status=success

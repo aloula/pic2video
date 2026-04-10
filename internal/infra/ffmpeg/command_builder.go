@@ -10,13 +10,24 @@ import (
 )
 
 func BuildRenderCommandArgs(outputPath string, assets []media.Asset, imageDur, transitionDur float64, width, height int, encoder string) []string {
+	return BuildRenderCommandArgsWithEffect(outputPath, assets, "static", imageDur, transitionDur, width, height, encoder)
+}
+
+func BuildRenderCommandArgsWithEffect(outputPath string, assets []media.Asset, imageEffect string, imageDur, transitionDur float64, width, height int, encoder string) []string {
 	inputs := []string{}
+	useStaticInputs := imageEffect == "" || imageEffect == "static"
 	for _, a := range assets {
-		inputs = append(inputs, "-loop", "1", "-t", fmt.Sprintf("%.3f", imageDur), "-i", a.Path)
+		if useStaticInputs {
+			inputs = append(inputs, "-loop", "1", "-t", fmt.Sprintf("%.3f", imageDur), "-i", a.Path)
+		} else {
+			// For Ken Burns modes, zoompan controls output duration (`d`) and fps.
+			// Avoid loop+t inputs here, which would multiply generated frames.
+			inputs = append(inputs, "-i", a.Path)
+		}
 	}
-	graph := pipeline.BuildXFadeGraph(len(assets), imageDur, transitionDur)
-	framing := pipeline.BuildFramingFilter(width, height)
-	if framing != "" {
+	graph := pipeline.BuildXFadeGraphWithEffect(len(assets), imageDur, transitionDur, imageEffect, width, height)
+	if useStaticInputs {
+		framing := pipeline.BuildFramingFilter(width, height)
 		graph = strings.Replace(graph, "[vlast]", "[vtmp]", 1) + ";[vtmp]" + framing + "[vlast]"
 	}
 	args := []string{"-y"}

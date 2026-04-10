@@ -80,6 +80,7 @@ func TestFormatAnnouncement(t *testing.T) {
 		Input:              "/tmp/photos",
 		Output:             "/tmp/out.mov",
 		Profile:            "uhd",
+		ImageEffect:        "kenburns-medium",
 		ImageDuration:      5,
 		TransitionDuration: 1,
 		Order:              "exif",
@@ -99,6 +100,9 @@ func TestFormatAnnouncement(t *testing.T) {
 	}
 	if !strings.Contains(got, "details:") {
 		t.Fatalf("expected details section in announcement: %s", got)
+	}
+	if !strings.Contains(got, "effect=kenburns-medium") {
+		t.Fatalf("expected image effect in announcement details: %s", got)
 	}
 	if !strings.Contains(got, "timing:") {
 		t.Fatalf("expected timing section in announcement: %s", got)

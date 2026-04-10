@@ -21,5 +21,11 @@ vendor/
 Thumbs.db
 *.tmp
 *.swp
+*.mp4
 .vscode/
 .idea/
+
+# Local test pictures (not committed)
+tests/fixtures/local-images/*
+!tests/fixtures/local-images/.gitkeep
+!tests/fixtures/local-images/README.md

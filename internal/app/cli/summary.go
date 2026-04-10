@@ -13,6 +13,7 @@ type StartOptions struct {
 	Input              string
 	Output             string
 	Profile            string
+	ImageEffect        string
 	ImageDuration      float64
 	TransitionDuration float64
 	Order              string
@@ -51,7 +52,7 @@ func FormatAnnouncement(opts StartOptions) string {
 
 	return fmt.Sprintf(
 		"status=starting files=%d format=%s\n"+
-			"details: input=%s output=%s profile=%s encoder=%s overwrite=%t\n"+
+			"details: input=%s output=%s profile=%s effect=%s encoder=%s overwrite=%t\n"+
 			"timing: image-duration=%.1fs transition-duration=%.1fs\n"+
 			"order: mode=%s order-file=%s",
 		opts.Files,
@@ -59,6 +60,7 @@ func FormatAnnouncement(opts StartOptions) string {
 		opts.Input,
 		opts.Output,
 		opts.Profile,
+		opts.ImageEffect,
 		opts.Encoder,
 		opts.Overwrite,
 		opts.ImageDuration,

@@ -12,7 +12,7 @@ import (
 )
 
 func newRenderCommand() *cobra.Command {
-	var input, output, profileName, orderMode, orderFile, encoder string
+	var input, output, profileName, imageEffect, orderMode, orderFile, encoder string
 	var imageDur, transDur float64
 	var overwrite bool
 	var ffmpegBin, ffprobeBin string
@@ -36,10 +36,16 @@ func newRenderCommand() *cobra.Command {
 					output = "slideshow_uhd.mp4"
 				}
 			}
+			if imageEffect == "" {
+				imageEffect = "static"
+			}
 
 			// Validate required orderMode values
 			if orderMode != "name" && orderMode != "time" && orderMode != "exif" && orderMode != "explicit" {
 				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--order must be one of name|time|exif|explicit"}
+			}
+			if imageEffect != "static" && imageEffect != "kenburns-low" && imageEffect != "kenburns-medium" && imageEffect != "kenburns-high" {
+				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--image-effect must be one of static|kenburns-low|kenburns-medium|kenburns-high"}
 			}
 			if orderMode == "explicit" && orderFile == "" {
 				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--order-file required for --order explicit"}
@@ -60,6 +66,7 @@ func newRenderCommand() *cobra.Command {
 				Input:              input,
 				Output:             output,
 				Profile:            profileName,
+				ImageEffect:        imageEffect,
 				ImageDuration:      imageDur,
 				TransitionDuration: transDur,
 				Order:              orderMode,
@@ -71,6 +78,7 @@ func newRenderCommand() *cobra.Command {
 			job, err := renderjob.BuildJob(renderjob.BuildOptions{
 				OutputPath:      output,
 				ProfileName:     profileName,
+				ImageEffect:     imageEffect,
 				ImageDuration:   imageDur,
 				Transition:      transDur,
 				Overwrite:       overwrite,
@@ -97,6 +105,7 @@ func newRenderCommand() *cobra.Command {
 	cmd.Flags().StringVar(&input, "input", "", "Input directory containing images (default: current directory)")
 	cmd.Flags().StringVar(&output, "output", "", "Output video path (default: slideshow_fhd.mp4 or slideshow_uhd.mp4 based on profile)")
 	cmd.Flags().StringVar(&profileName, "profile", "", "Output profile: fhd|uhd (default: uhd)")
+	cmd.Flags().StringVar(&imageEffect, "image-effect", "static", "Image effect: static|kenburns-low|kenburns-medium|kenburns-high (default: static)")
 	cmd.Flags().Float64Var(&imageDur, "image-duration", 5, "Per-image duration in seconds (default: 5)")
 	cmd.Flags().Float64Var(&transDur, "transition-duration", 1, "Cross-fade transition duration in seconds (default: 1)")
 	cmd.Flags().StringVar(&orderMode, "order", "name", "Ordering mode: name|time|exif|explicit (default: name)")
