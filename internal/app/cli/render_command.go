@@ -21,11 +21,25 @@ func newRenderCommand() *cobra.Command {
 		Use:   "render",
 		Short: "Render slideshow from image folder",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if input == "" || output == "" || profileName == "" {
-				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--input, --output and --profile are required"}
+			// Apply defaults for optional flags
+			if input == "" {
+				input = "."
 			}
-			if orderMode != "name" && orderMode != "time" && orderMode != "explicit" {
-				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--order must be one of name|time|explicit"}
+			if profileName == "" {
+				profileName = "uhd"
+			}
+			if output == "" {
+				// Generate output filename based on profile
+				if profileName == "fhd" {
+					output = "slideshow_fhd.mp4"
+				} else {
+					output = "slideshow_uhd.mp4"
+				}
+			}
+
+			// Validate required orderMode values
+			if orderMode != "name" && orderMode != "time" && orderMode != "exif" && orderMode != "explicit" {
+				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--order must be one of name|time|exif|explicit"}
 			}
 			if orderMode == "explicit" && orderFile == "" {
 				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--order-file required for --order explicit"}
@@ -41,7 +55,19 @@ func newRenderCommand() *cobra.Command {
 					return &renderjob.ClassifiedError{Class: renderjob.ErrInputValidation, Msg: "failed to parse explicit order file", Err: err}
 				}
 			}
-			assets = pipeline.ApplyOrder(orderMode, assets, explicit)
+			assets = pipeline.ApplyOrderExt(orderMode, assets, explicit, ffprobeBin)
+			fmt.Fprintln(cmd.OutOrStdout(), FormatAnnouncement(StartOptions{
+				Input:              input,
+				Output:             output,
+				Profile:            profileName,
+				ImageDuration:      imageDur,
+				TransitionDuration: transDur,
+				Order:              orderMode,
+				OrderFile:          orderFile,
+				Encoder:            encoder,
+				Overwrite:          overwrite,
+				Files:              len(assets),
+			}))
 			job, err := renderjob.BuildJob(renderjob.BuildOptions{
 				OutputPath:      output,
 				ProfileName:     profileName,
@@ -68,15 +94,15 @@ func newRenderCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&input, "input", "", "Input directory containing images")
-	cmd.Flags().StringVar(&output, "output", "", "Output video path")
-	cmd.Flags().StringVar(&profileName, "profile", "", "Output profile: fhd|uhd")
-	cmd.Flags().Float64Var(&imageDur, "image-duration", 4, "Per-image duration in seconds")
-	cmd.Flags().Float64Var(&transDur, "transition-duration", 1, "Cross-fade transition duration in seconds")
-	cmd.Flags().StringVar(&orderMode, "order", "name", "Ordering mode: name|time|explicit")
+	cmd.Flags().StringVar(&input, "input", "", "Input directory containing images (default: current directory)")
+	cmd.Flags().StringVar(&output, "output", "", "Output video path (default: slideshow_fhd.mp4 or slideshow_uhd.mp4 based on profile)")
+	cmd.Flags().StringVar(&profileName, "profile", "", "Output profile: fhd|uhd (default: uhd)")
+	cmd.Flags().Float64Var(&imageDur, "image-duration", 5, "Per-image duration in seconds (default: 5)")
+	cmd.Flags().Float64Var(&transDur, "transition-duration", 1, "Cross-fade transition duration in seconds (default: 1)")
+	cmd.Flags().StringVar(&orderMode, "order", "name", "Ordering mode: name|time|exif|explicit (default: name)")
 	cmd.Flags().StringVar(&orderFile, "order-file", "", "Path to explicit order manifest file")
-	cmd.Flags().StringVar(&encoder, "encoder", "auto", "Encoder preference: auto|nvenc|cpu")
-	cmd.Flags().BoolVar(&overwrite, "overwrite", false, "Overwrite output file if it exists")
+	cmd.Flags().StringVar(&encoder, "encoder", "auto", "Encoder preference: auto|nvenc|cpu (default: auto)")
+	cmd.Flags().BoolVar(&overwrite, "overwrite", true, "Overwrite output file if it exists (default: true)")
 	cmd.Flags().StringVar(&ffmpegBin, "ffmpeg-bin", envOrDefault("P2V_FFMPEG_BIN", "ffmpeg"), "Path to ffmpeg binary")
 	cmd.Flags().StringVar(&ffprobeBin, "ffprobe-bin", envOrDefault("P2V_FFPROBE_BIN", "ffprobe"), "Path to ffprobe binary")
 	_ = cmd.Flags().MarkHidden("ffmpeg-bin")

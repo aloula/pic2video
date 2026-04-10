@@ -54,15 +54,18 @@ make build-windows
 
 ## Usage
 
-Render FHD:
+Render with defaults (UHD profile, current directory input, slideshow_uhd.mp4 output):
+
+```bash
+./bin/pic2video render
+```
+
+Render FHD with custom output location:
 
 ```bash
 ./bin/pic2video render \
-  --input ./photos \
-  --output ./out/slideshow-fhd.mp4 \
   --profile fhd \
-  --image-duration 4 \
-  --transition-duration 1
+  --output ./out/slideshow.mp4
 ```
 
 Render UHD:
@@ -70,8 +73,7 @@ Render UHD:
 ```bash
 ./bin/pic2video render \
   --input ./photos \
-  --output ./out/slideshow-uhd.mp4 \
-  --profile uhd
+  --output ./out/slideshow-uhd.mp4
 ```
 
 Force CPU encoding:
@@ -84,30 +86,64 @@ Force CPU encoding:
   --encoder cpu
 ```
 
+Status output example:
+
+```text
+status=starting files=3 format=MP4
+details: input=./photos output=./out/slideshow-cpu.mp4 profile=fhd encoder=auto overwrite=true
+timing: image-duration=5.0s transition-duration=1.0s
+order: mode=exif order-file=-
+status=success
+result: profile=fhd resolution=1920x1080 encoder:auto->nvenc processed=3 files=3
+output: format=MP4 elapsed=< 1s output=./out/slideshow-cpu.mp4 warnings=0
+```
+
 Explicit ordering:
 
 ```bash
 ./bin/pic2video render \
-  --input ./photos \
-  --output ./out/slideshow-ordered.mp4 \
   --profile fhd \
   --order explicit \
   --order-file ./order.txt
+```
+
+EXIF date-based ordering (use photo capture time):
+
+```bash
+./bin/pic2video render \
+  --order exif
 ```
 
 ## Command flags
 
 `pic2video render` supports:
 
-- `--input <dir>` (required)
-- `--output <file>` (required)
-- `--profile <fhd|uhd>` (required)
-- `--image-duration <seconds>` (default: `4`)
+- `--input <dir>` (default: current directory)
+- `--output <file>` (default: `slideshow_fhd.mp4` or `slideshow_uhd.mp4` based on profile)
+- `--profile <fhd|uhd>` (default: `uhd`)
+- `--image-duration <seconds>` (default: `5`)
 - `--transition-duration <seconds>` (default: `1`)
-- `--order <name|time|explicit>` (default: `name`)
+- `--order <name|time|exif|explicit>` (default: `name`)
+  - `name`: alphabetical filename order
+  - `time`: OS file modification time
+  - `exif`: EXIF capture date/time when present, with mod-time fallback
+  - `explicit`: manifest file order
 - `--order-file <file>` (required with `--order explicit`)
 - `--encoder <auto|nvenc|cpu>` (default: `auto`)
-- `--overwrite` (overwrite output if it exists)
+- `--overwrite` (default: true — overwrite output if it exists)
+
+## Render status fields
+
+- `status=starting`: pre-render announcement with discovered input count and output container format
+- `files=<N>`: number of input images processed
+- `format=<EXT>`: output container label derived from output extension (for example, `MP4`, `MOV`, `AVI`, `UNKNOWN`)
+- `elapsed=<value>`: human-readable processing time
+
+Elapsed format rules:
+
+- `< 1s` for sub-second renders
+- `%.1fs` for durations under 60 seconds (for example, `45.3s`)
+- `Xm Ys` for durations of 60 seconds or more (for example, `1m 30s`)
 
 ## Exit codes
 
