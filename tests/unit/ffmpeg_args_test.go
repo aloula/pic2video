@@ -18,6 +18,12 @@ func TestBuildRenderCommandArgsStaticUsesLoopInputs(t *testing.T) {
 	if !strings.Contains(joined, "-t 5.000") {
 		t.Fatalf("expected static mode to include per-image duration input arg, got: %s", joined)
 	}
+	if !strings.Contains(joined, "fade=t=in:st=0:d=1.000") {
+		t.Fatalf("expected global fade-in filter in static mode, got: %s", joined)
+	}
+	if !strings.Contains(joined, "fade=t=out:st=8.000:d=1.000") {
+		t.Fatalf("expected global fade-out filter in static mode, got: %s", joined)
+	}
 }
 
 func TestBuildRenderCommandArgsKenBurnsUsesSingleFrameInputs(t *testing.T) {
@@ -32,5 +38,11 @@ func TestBuildRenderCommandArgsKenBurnsUsesSingleFrameInputs(t *testing.T) {
 	}
 	if !strings.Contains(joined, "zoompan=") {
 		t.Fatalf("expected kenburns filter graph to include zoompan, got: %s", joined)
+	}
+	if !strings.Contains(joined, "fade=t=in:st=0:d=1.000") {
+		t.Fatalf("expected global fade-in filter in kenburns mode, got: %s", joined)
+	}
+	if !strings.Contains(joined, "fade=t=out:st=8.000:d=1.000") {
+		t.Fatalf("expected global fade-out filter in kenburns mode, got: %s", joined)
 	}
 }

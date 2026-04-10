@@ -30,6 +30,9 @@ Ken Burns high:
 ./bin/pic2video render --input ./photos --profile uhd --image-effect kenburns-high
 ```
 
+All renders include a global fade-in and fade-out on the final composed video.
+The fade duration is derived from `--transition-duration`.
+
 ## Expected Startup Output
 
 ```text

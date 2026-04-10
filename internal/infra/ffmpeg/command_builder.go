@@ -30,6 +30,9 @@ func BuildRenderCommandArgsWithEffect(outputPath string, assets []media.Asset, i
 		framing := pipeline.BuildFramingFilter(width, height)
 		graph = strings.Replace(graph, "[vlast]", "[vtmp]", 1) + ";[vtmp]" + framing + "[vlast]"
 	}
+	if fadeFilter := buildGlobalFadeFilter(len(assets), imageDur, transitionDur); fadeFilter != "" {
+		graph = strings.Replace(graph, "[vlast]", "[vtmp]", 1) + ";[vtmp]" + fadeFilter + "[vlast]"
+	}
 	args := []string{"-y"}
 	args = append(args, inputs...)
 	args = append(args,
@@ -43,4 +46,34 @@ func BuildRenderCommandArgsWithEffect(outputPath string, assets []media.Asset, i
 		filepath.Clean(outputPath),
 	)
 	return args
+}
+
+func buildGlobalFadeFilter(assetCount int, imageDur, transitionDur float64) string {
+	total := totalVideoDuration(assetCount, imageDur, transitionDur)
+	if total <= 0 {
+		return ""
+	}
+	fadeDur := transitionDur
+	if fadeDur <= 0 {
+		fadeDur = 0.5
+	}
+	maxFade := total / 2
+	if fadeDur > maxFade {
+		fadeDur = maxFade
+	}
+	if fadeDur <= 0 {
+		return ""
+	}
+	fadeOutStart := total - fadeDur
+	return fmt.Sprintf("fade=t=in:st=0:d=%.3f,fade=t=out:st=%.3f:d=%.3f", fadeDur, fadeOutStart, fadeDur)
+}
+
+func totalVideoDuration(assetCount int, imageDur, transitionDur float64) float64 {
+	if assetCount <= 0 {
+		return 0
+	}
+	if assetCount == 1 {
+		return imageDur
+	}
+	return float64(assetCount)*imageDur - float64(assetCount-1)*transitionDur
 }

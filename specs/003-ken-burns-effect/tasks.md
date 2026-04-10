@@ -121,6 +121,10 @@ description: "Task list for 003-ken-burns-effect"
 - [x] T034 [P] Align contract details in `specs/003-ken-burns-effect/contracts/cli-contract.md`
 - [x] T035 Run full regression `go test ./...` and confirm no regressions from project root `go.mod`
 - [x] T040 Run `make build-all` after successful implementation and confirm multi-platform binaries are generated in `bin/`
+- [x] T041 Add final global fade-in/fade-out chain for all output videos in `internal/infra/ffmpeg/command_builder.go`
+- [x] T042 Add unit assertions for global fade-in/fade-out in static and Ken Burns modes in `tests/unit/ffmpeg_args_test.go`
+- [x] T043 Update docs for final output fade behavior in `README.md`
+- [x] T044 Run full regression `go test ./...` and confirm fade behavior introduces no regressions
 
 ---
 

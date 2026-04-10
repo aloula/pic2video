@@ -28,6 +28,14 @@ Example:
 
 `details: input=./photos output=./slideshow_uhd.mp4 profile=uhd effect=kenburns-medium encoder=auto overwrite=true`
 
+## Final Output Fade Contract
+
+All generated videos apply final stream fades:
+
+- Fade-in starts at `st=0`
+- Fade-out starts at `total_duration - fade_duration`
+- `fade_duration` defaults to `--transition-duration` and is clamped to at most half of total output duration
+
 ## Backward Compatibility
 
 - Existing behavior remains unchanged when `--image-effect` is omitted (`static`).

@@ -1,6 +1,6 @@
 # pic2video
 
-Create YouTube-ready slideshow videos from photos using cross-fade transitions.
+Create YouTube-ready slideshow videos from photos using cross-fade transitions plus final fade-in/fade-out.
 
 ## Overview
 
@@ -138,6 +138,7 @@ EXIF date-based ordering (use photo capture time):
   - `kenburns-high`: stronger cinematic motion
 - `--image-duration <seconds>` (default: `5`)
 - `--transition-duration <seconds>` (default: `1`)
+  - Also controls global output fade-in/fade-out duration (clamped to half of total video length)
 - `--order <name|time|exif|explicit>` (default: `name`)
   - `name`: alphabetical filename order
   - `time`: OS file modification time
@@ -186,6 +187,7 @@ Quality acceptance is evaluated using the four rubric dimensions below:
 - Framing consistency: one framing policy is applied for all frames in a render run.
 - Sharpness preservation: warnings are emitted when source resolution is below target profile.
 - Transition smoothness: cross-fade timeline uses deterministic offsets across segments.
+- Intro/outro continuity: final output always applies global fade-in and fade-out.
 
 Validation mapping:
 
