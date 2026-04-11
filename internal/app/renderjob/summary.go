@@ -1,8 +1,8 @@
 package renderjob
 
 import (
-"fmt"
-"time"
+	"fmt"
+	"time"
 )
 
 func BuildSummary(job RenderJob, started time.Time, status string, err error) RenderSummary {
@@ -17,6 +17,10 @@ func BuildSummary(job RenderJob, started time.Time, status string, err error) Re
 		EffectiveResolution: fmt.Sprintf("%dx%d", job.Profile.Width, job.Profile.Height),
 		EffectiveEncoder:    job.EffectiveEncoder,
 		OutputPath:          job.OutputPath,
+		ExifOverlayEnabled:  job.ExifOverlayEnabled,
+		ExifFontSize:        job.ExifFontSize,
+		ExifFooterOffsetPx:  job.ExifFooterOffsetPx,
+		ExifBoxAlpha:        job.ExifBoxAlpha,
 		Warnings:            job.Warnings,
 	}
 	if err != nil {

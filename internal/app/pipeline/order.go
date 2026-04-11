@@ -8,12 +8,42 @@ import (
 	"time"
 
 	"github.com/loula/pic2video/internal/domain/media"
+	"github.com/loula/pic2video/internal/infra/fsio"
 )
 
+// ApplyOrder applies ordering to assets (legacy, for backward compatibility)
 func ApplyOrder(mode string, assets []media.Asset, explicit []string) []media.Asset {
+	return ApplyOrderExt(mode, assets, explicit, "")
+}
+
+// ApplyOrderExt applies ordering to assets with optional ffprobe support for EXIF
+func ApplyOrderExt(mode string, assets []media.Asset, explicit []string, ffprobeBin string) []media.Asset {
 	ordered := make([]media.Asset, len(assets))
 	copy(ordered, assets)
 	switch mode {
+	case "exif":
+		// Sort by EXIF creation date using ffprobe
+		exifData := make(map[string]time.Time)
+		for _, asset := range ordered {
+			exif, err := fsio.ExtractExif(asset.Path, ffprobeBin)
+			if err == nil && !exif.CreateDate.IsZero() {
+				exifData[asset.Path] = exif.CreateDate
+			} else {
+				// Fallback to file modification time
+				if fileInfo, err := osStat(asset.Path); err == nil {
+					exifData[asset.Path] = fileInfo.ModTime()
+				}
+			}
+		}
+		sort.SliceStable(ordered, func(i, j int) bool {
+			ti := exifData[ordered[i].Path]
+			tj := exifData[ordered[j].Path]
+			if ti.Equal(tj) {
+				// Fallback to name comparison if same time
+				return strings.ToLower(ordered[i].Path) < strings.ToLower(ordered[j].Path)
+			}
+			return ti.Before(tj)
+		})
 	case "time":
 		sort.SliceStable(ordered, func(i, j int) bool {
 			a, _ := osModTime(ordered[i].Path)

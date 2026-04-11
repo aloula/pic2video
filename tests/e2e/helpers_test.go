@@ -76,11 +76,48 @@ func createFakeBinaries(t *testing.T) (string, string) {
 	return ffmpeg, ffprobe
 }
 
+func createFakeBinariesWithArgsCapture(t *testing.T) (string, string, string) {
+	t.Helper()
+	dir := t.TempDir()
+	argsLog := filepath.Join(dir, "ffmpeg-args.log")
+	ffmpeg := filepath.Join(dir, "ffmpeg")
+	ffprobe := filepath.Join(dir, "ffprobe")
+	ffmpegScript := "#!/bin/sh\n" +
+		"if [ \"$2\" = \"-encoders\" ] || [ \"$1\" = \"-hide_banner\" ]; then\n" +
+		"  echo ' V..... h264_nvenc NVIDIA NVENC H.264 encoder'\n" +
+		"  exit 0\n" +
+		"fi\n" +
+		"printf '%s\\n' \"$@\" > \"" + argsLog + "\"\n" +
+		"for last; do :; done\n" +
+		"out=\"$last\"\n" +
+		"mkdir -p \"$(dirname \"$out\")\"\n" +
+		"touch \"$out\"\n" +
+		"exit 0\n"
+	if err := os.WriteFile(ffmpeg, []byte(ffmpegScript), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(ffprobe, []byte("#!/bin/sh\necho '{\"streams\":[{\"width\":4000,\"height\":3000,\"codec_name\":\"mjpeg\"}]}'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return ffmpeg, ffprobe, argsLog
+}
+
 func createImageSet(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	for _, n := range []string{"a.jpg", "b.jpg", "c.jpg"} {
 		if err := os.WriteFile(filepath.Join(dir, n), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}
+
+func createImageAndAudioSet(t *testing.T) string {
+	t.Helper()
+	dir := createImageSet(t)
+	for _, n := range []string{"ambient_b.mp3", "ambient_a.mp3", "ignored.wav"} {
+		if err := os.WriteFile(filepath.Join(dir, n), []byte("audio"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}

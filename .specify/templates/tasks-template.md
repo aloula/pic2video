@@ -158,6 +158,7 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Additional E2E hardening tests in tests/e2e/
 - [ ] TXXX Security hardening
 - [ ] TXXX Run quickstart.md validation
+- [ ] TXXX Run `make build-all` after successful implementation and record result
 
 ---
 

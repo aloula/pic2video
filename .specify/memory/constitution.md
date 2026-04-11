@@ -71,6 +71,8 @@ documentacao obrigatoria reduz friccao operacional.
 	com execucao antes da implementacao de codigo funcional.
 - Lista de tarefas MUST incluir tarefa de atualizacao de README.md quando houver
 	impacto em uso, setup, build, run, flags, ou troubleshooting.
+- Apos implementacao bem-sucedida, o fluxo MUST executar `make build-all`
+	e registrar o resultado antes de considerar a entrega concluida.
 - Pull requests MUST documentar quais principios foram atendidos e quais testes
 	comprovam conformidade, incluindo confirmacao explicita de revisao do README.md.
 
@@ -89,4 +91,4 @@ Revisao de conformidade MUST ocorrer em tres pontos: durante especificacao,
 durante planejamento e durante revisao de PR final. Nao conformidades MUST bloquear
 aprovacao ate adequacao ou excecao formal documentada.
 
-**Version**: 1.1.0 | **Ratified**: 2026-04-09 | **Last Amended**: 2026-04-09
+**Version**: 1.2.0 | **Ratified**: 2026-04-09 | **Last Amended**: 2026-04-09
