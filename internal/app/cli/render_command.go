@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/loula/pic2video/internal/app/pipeline"
 	"github.com/loula/pic2video/internal/app/renderjob"
@@ -18,7 +19,7 @@ func newRenderCommand() *cobra.Command {
 	var exifOverlay bool
 	var exifFontSize int
 	var debugExif bool
-	exifFooterOffsetPx := 10
+	exifFooterOffsetPx := 30
 	exifBoxAlpha := 0.4
 	var overwrite bool
 	var ffmpegBin, ffprobeBin string
@@ -45,6 +46,7 @@ func newRenderCommand() *cobra.Command {
 			if imageEffect == "" {
 				imageEffect = "static"
 			}
+			exifFooterOffsetPx = exifFooterOffsetForProfile(profileName)
 
 			// Validate required orderMode values
 			if orderMode != "name" && orderMode != "time" && orderMode != "exif" && orderMode != "explicit" {
@@ -176,4 +178,11 @@ func newRenderCommand() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("ffmpeg-bin")
 	_ = cmd.Flags().MarkHidden("ffprobe-bin")
 	return cmd
+}
+
+func exifFooterOffsetForProfile(profileName string) int {
+	if strings.EqualFold(strings.TrimSpace(profileName), "uhd") {
+		return 60
+	}
+	return 30
 }

@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	goexif "github.com/rwcarlsen/goexif/exif"
 )
 
 // ExifData holds extracted EXIF metadata
@@ -38,22 +41,49 @@ func FormatCapturedDate(t time.Time) string {
 
 func firstTag(tags map[string]string, keys ...string) string {
 	for _, k := range keys {
-		if v := strings.TrimSpace(tags[strings.ToLower(k)]); v != "" {
+		if v := sanitizeExifValue(tags[canonicalTagKey(k)]); v != "" {
 			return v
 		}
 	}
 	return ""
 }
 
+func sanitizeExifValue(v string) string {
+	v = strings.Trim(strings.TrimSpace(v), "\x00")
+	for len(v) >= 2 {
+		if (v[0] == '"' && v[len(v)-1] == '"') || (v[0] == '\'' && v[len(v)-1] == '\'') {
+			v = strings.TrimSpace(v[1 : len(v)-1])
+			continue
+		}
+		break
+	}
+	return v
+}
+
+func canonicalTagKey(k string) string {
+	k = strings.ToLower(strings.TrimSpace(k))
+	if k == "" {
+		return ""
+	}
+	var b strings.Builder
+	b.Grow(len(k))
+	for _, r := range k {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}
+
 func normalizeTags(tags map[string]string) map[string]string {
 	out := make(map[string]string, len(tags))
 	for k, v := range tags {
-		lk := strings.ToLower(strings.TrimSpace(k))
+		lk := canonicalTagKey(k)
 		if lk == "" {
 			continue
 		}
 		if _, exists := out[lk]; !exists {
-			out[lk] = strings.TrimSpace(v)
+			out[lk] = sanitizeExifValue(v)
 		}
 	}
 	return out
@@ -80,11 +110,18 @@ func parseExifTime(raw string) (time.Time, bool) {
 		time.RFC3339,
 		"2006-01-02T15:04:05.000000Z07:00",
 		"2006-01-02T15:04:05Z07:00",
+		"2006-01-02T15:04:05-0700",
+		"2006-01-02T15:04:05.000-0700",
 		"2006-01-02 15:04:05",
+		"2006-01-02 15:04:05-0700",
+		"2006-01-02 15:04:05Z07:00",
 		"2006-01-02",
 		"2006:01:02 15:04:05",
+		"2006:01:02 15:04:05.000",
 		"2006:01:02 15:04:05-07:00",
 		"2006:01:02 15:04:05Z07:00",
+		"2006:01:02 15:04:05-0700",
+		"2006:01:02",
 	}
 	for _, layout := range layouts {
 		if t, err := time.Parse(layout, raw); err == nil {
@@ -98,6 +135,60 @@ func parseExifTime(raw string) (time.Time, bool) {
 		}
 	}
 	return time.Time{}, false
+}
+
+func applyNativeExifFallback(imagePath string, exif *ExifData) {
+	if exif == nil {
+		return
+	}
+	ext := strings.ToLower(filepath.Ext(imagePath))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".tif" && ext != ".tiff" {
+		return
+	}
+
+	f, err := os.Open(imagePath)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	x, err := goexif.Decode(f)
+	if err != nil {
+		return
+	}
+
+	if exif.CameraModel == "" {
+		if tag, err := x.Get(goexif.Model); err == nil {
+			if model, err := tag.StringVal(); err == nil {
+				exif.CameraModel = sanitizeExifValue(model)
+			}
+		}
+	}
+	if exif.FocalDistance == "" {
+		if tag, err := x.Get(goexif.FocalLength); err == nil {
+			exif.FocalDistance = sanitizeExifValue(tag.String())
+		}
+	}
+	if exif.ShutterSpeed == "" {
+		if tag, err := x.Get(goexif.ExposureTime); err == nil {
+			exif.ShutterSpeed = sanitizeExifValue(tag.String())
+		}
+	}
+	if exif.Aperture == "" {
+		if tag, err := x.Get(goexif.FNumber); err == nil {
+			exif.Aperture = sanitizeExifValue(tag.String())
+		}
+	}
+	if exif.ISO == "" {
+		if tag, err := x.Get(goexif.ISOSpeedRatings); err == nil {
+			exif.ISO = sanitizeExifValue(tag.String())
+		}
+	}
+	if exif.CreateDate.IsZero() {
+		if t, err := x.DateTime(); err == nil {
+			exif.CreateDate = t
+		}
+	}
 }
 
 func parseNumericDateUnix(raw string) (time.Time, bool) {
@@ -129,10 +220,7 @@ func ExtractExif(imagePath, ffprobeBin string) (*ExifData, error) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	if err := cmd.Run(); err != nil {
-		// If ffprobe fails, return error but allow fallback to file mod time
-		return nil, fmt.Errorf("failed to extract exif from %s: %w", imagePath, err)
-	}
+	ffprobeErr := cmd.Run()
 
 	var result struct {
 		Format struct {
@@ -143,8 +231,10 @@ func ExtractExif(imagePath, ffprobeBin string) (*ExifData, error) {
 		} `json:"streams"`
 	}
 
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse exif json: %w", err)
+	if ffprobeErr == nil {
+		if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+			return nil, fmt.Errorf("failed to parse exif json: %w", err)
+		}
 	}
 
 	tags := normalizeTags(result.Format.Tags)
@@ -153,36 +243,52 @@ func ExtractExif(imagePath, ffprobeBin string) (*ExifData, error) {
 	}
 
 	exif := &ExifData{}
-	exif.CameraModel = firstTag(tags, "model", "cameramodelname", "make")
-	exif.FocalDistance = firstTag(tags, "focallength", "focallenin35mmfilm", "focal_length")
+	exif.CameraModel = firstTag(tags, "model", "cameramodelname", "com.apple.quicktime.model", "make")
+	exif.FocalDistance = firstTag(tags, "focallength", "focallenin35mmfilm", "focallengthin35mmfilm", "focal_length")
 	exif.ShutterSpeed = firstTag(tags, "exposuretime", "shutterspeedvalue", "shutterspeed")
 	exif.Aperture = firstTag(tags, "fnumber", "aperturevalue", "aperture")
-	exif.ISO = firstTag(tags, "iso", "isospeedratings", "photographicsensitivity")
+	exif.ISO = firstTag(tags, "iso", "isospeedratings", "isoequivalent", "photographicsensitivity")
 
 	dateRaw := firstTag(
 		tags,
 		"datetimeoriginal",
 		"datetime",
+		"date",
 		"createdate",
+		"creationdate",
+		"mediacreatedate",
 		"creation_time",
 		"com.apple.quicktime.creationtime",
 		"com.apple.qtime.creationdate",
+		"com.apple.quicktime.creationdate",
 	)
 	if t, ok := parseExifTime(dateRaw); ok {
 		exif.CreateDate = t
-		return exif, nil
 	}
-	if t, ok := parseNumericDateUnix(dateRaw); ok {
-		exif.CreateDate = t
-		return exif, nil
+	if exif.CreateDate.IsZero() {
+		if t, ok := parseNumericDateUnix(dateRaw); ok {
+			exif.CreateDate = t
+		}
 	}
 
-	// If creation_time not found or couldn't parse, fall back to file modification time
-	fileInfo, err := os.Stat(imagePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to stat file: %w", err)
+	applyNativeExifFallback(imagePath, exif)
+
+	if exif.CreateDate.IsZero() {
+		// If creation date is still unavailable, fall back to file modification time
+		fileInfo, err := os.Stat(imagePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to stat file: %w", err)
+		}
+		exif.CreateDate = fileInfo.ModTime()
 	}
-	exif.CreateDate = fileInfo.ModTime()
+
+	if ffprobeErr != nil && exif.CameraModel == "" && exif.FocalDistance == "" && exif.ShutterSpeed == "" && exif.Aperture == "" && exif.ISO == "" {
+		ffprobeStderr := strings.TrimSpace(stderr.String())
+		if ffprobeStderr != "" {
+			return exif, fmt.Errorf("failed to extract exif from %s: %w (%s)", imagePath, ffprobeErr, ffprobeStderr)
+		}
+		return exif, fmt.Errorf("failed to extract exif from %s: %w", imagePath, ffprobeErr)
+	}
 
 	return exif, nil
 }

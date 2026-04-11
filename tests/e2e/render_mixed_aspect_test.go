@@ -38,7 +38,7 @@ func TestRenderMixedAspectExifOverlayMissingMetadataFallback(t *testing.T) {
 	if !strings.Contains(args, "drawtext=") {
 		t.Fatalf("expected drawtext overlay args, got: %s", args)
 	}
-	if !strings.Contains(args, "Unknown - Unknown - Unknown - Unknown - Unknown -") {
+	if !strings.Contains(args, "Unknown - Unknown - Unknown - Unknown - ISO Unknown -") {
 		t.Fatalf("expected Unknown fallback values for missing exif metadata, got: %s", args)
 	}
 }

@@ -30,6 +30,9 @@ func BuildRenderCommandArgsWithEffectAndAudio(outputPath string, assets []media.
 	if len(overlays) > 0 {
 		overlay = overlays[0]
 	}
+	if overlay.Enabled {
+		overlay.FooterOffsetPx = overlayFooterOffsetForResolution(width, height)
+	}
 	inputs := []string{}
 	useStaticInputs := imageEffect == "" || imageEffect == "static"
 	for _, a := range assets {
@@ -107,7 +110,7 @@ func buildOverlayFilter(overlay OverlayOptions, assetCount int, imageDur, transi
 	}
 	offset := overlay.FooterOffsetPx
 	if offset <= 0 {
-		offset = 10
+		offset = 30
 	}
 	alpha := overlay.BoxAlpha
 	if alpha <= 0 || alpha >= 1 {
@@ -124,7 +127,13 @@ func buildOverlayFilter(overlay OverlayOptions, assetCount int, imageDur, transi
 	}
 	for i := 0; i < assetCount; i++ {
 		start := float64(i) * step
-		end := start + imageDur
+		end := total
+		if i < assetCount-1 {
+			end = float64(i+1) * step
+		}
+		if end <= start {
+			end = start + imageDur
+		}
 		if end > total {
 			end = total
 		}
@@ -139,6 +148,13 @@ func buildOverlayFilter(overlay OverlayOptions, assetCount int, imageDur, transi
 		)
 	}
 	return strings.Join(filters, ",")
+}
+
+func overlayFooterOffsetForResolution(width, height int) int {
+	if width*height >= 3840*2160 {
+		return 60
+	}
+	return 30
 }
 
 func buildGlobalFadeFilter(assetCount int, imageDur, transitionDur float64) string {

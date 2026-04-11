@@ -7,6 +7,14 @@ func BuildFramingFilter(width, height int) string {
 }
 
 func BuildMotionFilter(effect string, width, height int, imageDur float64) string {
+	return BuildMotionFilterForAsset(effect, width, height, imageDur, 0)
+}
+
+func BuildMotionFilterForAsset(effect string, width, height int, imageDur float64, assetIndex int) string {
+	return buildMotionFilterWithDirection(effect, width, height, imageDur, pseudoRandomDirection(assetIndex))
+}
+
+func buildMotionFilterWithDirection(effect string, width, height int, imageDur float64, dir int) string {
 	if effect == "" || effect == "static" {
 		return ""
 	}
@@ -52,17 +60,32 @@ func BuildMotionFilter(effect string, width, height int, imageDur float64) strin
 	prepW := int(float64(width)*1.25 + 0.5)
 	prepH := int(float64(height)*1.25 + 0.5)
 
+	xExpr := fmt.Sprintf("(iw-iw/zoom)*%.4f*(on/%d)", panScale, frames-1)
+	yExpr := fmt.Sprintf("(ih-ih/zoom)*%.4f*(on/%d)", panScale, frames-1)
+	if dir == 1 || dir == 3 {
+		xExpr = fmt.Sprintf("(iw-iw/zoom)*%.4f*(1-(on/%d))", panScale, frames-1)
+	}
+	if dir == 2 || dir == 3 {
+		yExpr = fmt.Sprintf("(ih-ih/zoom)*%.4f*(1-(on/%d))", panScale, frames-1)
+	}
+
 	return fmt.Sprintf(
-		"scale=w=%d:h=%d:force_original_aspect_ratio=increase:flags=lanczos,crop=%d:%d,zoompan=z='min(zoom+%.6f,%.2f)':x='(iw-iw/zoom)*%.4f*(on/%d)':y='(ih-ih/zoom)*%.4f*(on/%d)':d=%d:fps=%d:s=%dx%d,format=yuv420p,setsar=1",
+		"scale=w=%d:h=%d:force_original_aspect_ratio=increase:flags=lanczos,crop=%d:%d,zoompan=z='min(zoom+%.6f,%.2f)':x='%s':y='%s':d=%d:fps=%d:s=%dx%d,format=yuv420p,setsar=1",
 		prepW, prepH,
 		prepW, prepH,
 		zoomStep, zoomMax,
-		panScale,
-		frames-1,
-		panScale,
-		frames-1,
+		xExpr,
+		yExpr,
 		frames,
 		motionFPS,
 		width, height,
 	)
+}
+
+func pseudoRandomDirection(assetIndex int) int {
+	if assetIndex < 0 {
+		assetIndex = -assetIndex
+	}
+	v := uint32(assetIndex+1)*2654435761 + 1013904223
+	return int(v % 4)
 }

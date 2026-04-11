@@ -61,7 +61,7 @@ func TestRenderUHDWithExifOverlayArgs(t *testing.T) {
 	if !strings.Contains(args, "fontsize=60") {
 		t.Fatalf("expected requested font size in drawtext filter, got: %s", args)
 	}
-	if !strings.Contains(args, "y=h-th-10") {
+	if !strings.Contains(args, "y=h-th-60") {
 		t.Fatalf("expected footer offset in drawtext filter, got: %s", args)
 	}
 	if !strings.Contains(args, "fontcolor=white") || !strings.Contains(args, "boxcolor=black@0.40") {

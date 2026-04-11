@@ -54,7 +54,7 @@ func TestFormatElapsed(t *testing.T) {
 }
 
 func TestFormatSummaryIncludesNewFields(t *testing.T) {
-	got := cli.FormatSummary("fhd", "1920x1080", true, 42, 10, 0.4, "auto", "cpu", "/tmp/out.mp4", 45.321, 12, nil, false)
+	got := cli.FormatSummary("fhd", "1920x1080", true, 42, 30, 0.4, "auto", "cpu", "/tmp/out.mp4", 45.321, 12, nil, false)
 	if !strings.Contains(got, "status=success") {
 		t.Fatalf("expected success status in summary: %s", got)
 	}
@@ -76,7 +76,7 @@ func TestFormatSummaryIncludesNewFields(t *testing.T) {
 	if !strings.Contains(got, "elapsed=45.3s") {
 		t.Fatalf("expected human-readable elapsed in summary: %s", got)
 	}
-	if !strings.Contains(got, "exif-overlay: enabled=true font-size=42 footer-offset=10 box-alpha=0.40") {
+	if !strings.Contains(got, "exif-overlay: enabled=true font-size=42 footer-offset=30 box-alpha=0.40") {
 		t.Fatalf("expected exif overlay fields in summary: %s", got)
 	}
 }
@@ -95,7 +95,7 @@ func TestFormatAnnouncement(t *testing.T) {
 		AudioOrder:         "alphabetical",
 		ExifOverlay:        false,
 		ExifFontSize:       0,
-		ExifFooterOffsetPx: 10,
+		ExifFooterOffsetPx: 30,
 		ExifBoxAlpha:       0.4,
 		Encoder:            "auto",
 		Overwrite:          true,
@@ -128,7 +128,7 @@ func TestFormatAnnouncement(t *testing.T) {
 	if !strings.Contains(got, "audio: files=2 order=alphabetical") {
 		t.Fatalf("expected audio summary in startup announcement: %s", got)
 	}
-	if !strings.Contains(got, "exif-overlay: enabled=false font-size=0 footer-offset=10 box-alpha=0.40") {
+	if !strings.Contains(got, "exif-overlay: enabled=false font-size=0 footer-offset=30 box-alpha=0.40") {
 		t.Fatalf("expected exif overlay startup fields in announcement: %s", got)
 	}
 }
@@ -142,8 +142,23 @@ func TestFormatExifOverlayLineExactOrderAndDate(t *testing.T) {
 		ISO:           "400",
 		CreateDate:    time.Date(2024, 8, 15, 12, 0, 0, 0, time.UTC),
 	})
-	want := "Canon R5 - 35mm - 1/250s - f/2.8 - 400 - 15/08/2024"
+	want := "Canon R5 - 35mm - 1/250s - f/2.8 - ISO 400 - 15/08/2024"
 	if line != want {
 		t.Fatalf("unexpected overlay line\ngot:  %s\nwant: %s", line, want)
+	}
+}
+
+func TestFormatExifOverlayLineFormatsRationalValues(t *testing.T) {
+	line := renderjob.FormatExifOverlayLine(&fsio.ExifData{
+		CameraModel:   "NIKON Z 8",
+		FocalDistance: "350/10",
+		ShutterSpeed:  "1/500",
+		Aperture:      "63/10",
+		ISO:           "6400",
+		CreateDate:    time.Date(2026, 3, 7, 10, 0, 0, 0, time.UTC),
+	})
+	want := "NIKON Z 8 - 35mm - 1/500s - f/6.3 - ISO 6400 - 07/03/2026"
+	if line != want {
+		t.Fatalf("unexpected rational overlay line\ngot:  %s\nwant: %s", line, want)
 	}
 }

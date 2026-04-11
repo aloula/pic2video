@@ -3,7 +3,9 @@ package renderjob
 import (
 	"context"
 	"fmt"
+	"math"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,18 +24,81 @@ func FormatExifOverlayLine(exif *fsio.ExifData) string {
 	return fmt.Sprintf(
 		"%s - %s - %s - %s - %s - %s",
 		fsio.NormalizeExifValue(exif.CameraModel),
-		fsio.NormalizeExifValue(exif.FocalDistance),
+		formatFocalDistance(exif.FocalDistance),
 		formatSpeed(exif.ShutterSpeed),
 		formatAperture(exif.Aperture),
-		fsio.NormalizeExifValue(exif.ISO),
+		formatISO(exif.ISO),
 		fsio.FormatCapturedDate(exif.CreateDate),
 	)
+}
+
+func formatISO(v string) string {
+	v = fsio.NormalizeExifValue(v)
+	if strings.HasPrefix(strings.ToUpper(v), "ISO") {
+		return v
+	}
+	return "ISO " + v
+}
+
+func parseRational(v string) (float64, bool) {
+	v = strings.TrimSpace(v)
+	parts := strings.Split(v, "/")
+	if len(parts) != 2 {
+		return 0, false
+	}
+	n, errN := strconv.ParseFloat(strings.TrimSpace(parts[0]), 64)
+	d, errD := strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+	if errN != nil || errD != nil || d == 0 {
+		return 0, false
+	}
+	return n / d, true
+}
+
+func formatDecimal(v float64) string {
+	if math.Abs(v-math.Round(v)) < 1e-9 {
+		return strconv.FormatFloat(math.Round(v), 'f', 0, 64)
+	}
+	return strconv.FormatFloat(v, 'f', 1, 64)
+}
+
+func formatFocalDistance(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return "Unknown"
+	}
+	if strings.HasSuffix(strings.ToLower(v), "mm") {
+		return v
+	}
+	if fv, ok := parseRational(v); ok {
+		return formatDecimal(fv) + "mm"
+	}
+	if _, err := strconv.ParseFloat(v, 64); err == nil {
+		return formatDecimal(mustFloat(v)) + "mm"
+	}
+	return v
+}
+
+func mustFloat(v string) float64 {
+	f, _ := strconv.ParseFloat(strings.TrimSpace(v), 64)
+	return f
 }
 
 func formatSpeed(v string) string {
 	v = strings.TrimSpace(v)
 	if v == "" {
 		return "Unknown"
+	}
+	if strings.HasSuffix(v, "s") {
+		return v
+	}
+	if fv, ok := parseRational(v); ok {
+		if fv >= 1 {
+			return formatDecimal(fv) + "s"
+		}
+		den := int(math.Round(1 / fv))
+		if den > 0 {
+			return fmt.Sprintf("1/%ds", den)
+		}
 	}
 	if strings.HasPrefix(v, "1/") && strings.HasSuffix(v, "s") {
 		return v
@@ -51,6 +116,9 @@ func formatAperture(v string) string {
 	}
 	if strings.HasPrefix(strings.ToLower(v), "f/") {
 		return v
+	}
+	if fv, ok := parseRational(v); ok {
+		return "f/" + formatDecimal(fv)
 	}
 	return "f/" + v
 }

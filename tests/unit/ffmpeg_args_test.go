@@ -88,7 +88,7 @@ func TestBuildRenderCommandArgsOverlayEnabledAddsDrawtext(t *testing.T) {
 	assets := []media.Asset{{Path: "a.jpg"}, {Path: "b.jpg"}}
 	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudio(
 		"out.mp4", assets, nil, "static", 5, 1, 1920, 1080, "cpu",
-		ffmpeg.OverlayOptions{Enabled: true, FontSize: 42, FooterOffsetPx: 10, BoxAlpha: 0.4, Lines: []string{"A", "B"}},
+		ffmpeg.OverlayOptions{Enabled: true, FontSize: 42, FooterOffsetPx: 20, BoxAlpha: 0.4, Lines: []string{"A", "B"}},
 	)
 	joined := strings.Join(args, " ")
 	if !strings.Contains(joined, "drawtext=") {
@@ -97,8 +97,8 @@ func TestBuildRenderCommandArgsOverlayEnabledAddsDrawtext(t *testing.T) {
 	if !strings.Contains(joined, "fontsize=42") {
 		t.Fatalf("expected overlay font size in drawtext args, got: %s", joined)
 	}
-	if !strings.Contains(joined, "y=h-th-10") {
-		t.Fatalf("expected 10px footer offset in drawtext args, got: %s", joined)
+	if !strings.Contains(joined, "y=h-th-30") {
+		t.Fatalf("expected 30px footer offset in drawtext args for FHD, got: %s", joined)
 	}
 	if !strings.Contains(joined, "fontcolor=white") {
 		t.Fatalf("expected white overlay text color, got: %s", joined)
@@ -112,7 +112,7 @@ func TestBuildRenderCommandArgsOverlayDisabledOmitsDrawtext(t *testing.T) {
 	assets := []media.Asset{{Path: "a.jpg"}, {Path: "b.jpg"}}
 	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudio(
 		"out.mp4", assets, nil, "static", 5, 1, 3840, 2160, "cpu",
-		ffmpeg.OverlayOptions{Enabled: false, FontSize: 60, FooterOffsetPx: 10, BoxAlpha: 0.4, Lines: []string{"A", "B"}},
+		ffmpeg.OverlayOptions{Enabled: false, FontSize: 60, FooterOffsetPx: 20, BoxAlpha: 0.4, Lines: []string{"A", "B"}},
 	)
 	joined := strings.Join(args, " ")
 	if strings.Contains(joined, "drawtext=") {

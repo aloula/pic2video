@@ -127,13 +127,13 @@ func TestRenderFHDWithExifOverlayArgs(t *testing.T) {
 	if !strings.Contains(args, "fontsize=42") {
 		t.Fatalf("expected requested font size in drawtext filter, got: %s", args)
 	}
-	if !strings.Contains(args, "y=h-th-10") {
+	if !strings.Contains(args, "y=h-th-30") {
 		t.Fatalf("expected footer offset in drawtext filter, got: %s", args)
 	}
 	if !strings.Contains(args, "fontcolor=white") || !strings.Contains(args, "boxcolor=black@0.40") {
 		t.Fatalf("expected text color and transparency style in drawtext filter, got: %s", args)
 	}
-	if !strings.Contains(args, "Unknown - Unknown - Unknown - Unknown - Unknown -") {
+	if !strings.Contains(args, "Unknown - Unknown - Unknown - Unknown - ISO Unknown -") {
 		t.Fatalf("expected deterministic EXIF overlay field order with Unknown fallback, got: %s", args)
 	}
 }

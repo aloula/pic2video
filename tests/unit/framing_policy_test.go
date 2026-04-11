@@ -37,10 +37,16 @@ func TestBuildMotionFilterKenBurnsQualityDirectivesAllModes(t *testing.T) {
 			if !strings.Contains(f, "s=1920x1080") {
 				t.Fatalf("expected effect output resolution to match profile for %s: %s", mode, f)
 			}
-			if strings.Contains(f, "-0.5") {
-				t.Fatalf("did not expect reversing pan term in filter for %s: %s", mode, f)
-			}
 		})
+	}
+}
+
+func TestBuildMotionFilterVariesByAssetIndex(t *testing.T) {
+	f0 := pipeline.BuildMotionFilterForAsset("kenburns-medium", 1920, 1080, 5, 0)
+	f1 := pipeline.BuildMotionFilterForAsset("kenburns-medium", 1920, 1080, 5, 1)
+	f2 := pipeline.BuildMotionFilterForAsset("kenburns-medium", 1920, 1080, 5, 2)
+	if f0 == f1 && f1 == f2 {
+		t.Fatalf("expected per-asset motion variation, got identical filters")
 	}
 }
 
