@@ -9,8 +9,7 @@ import (
 func TestMissingFFmpegExitCode(t *testing.T) {
 	_, ffprobe := createFakeBinaries(t)
 	in := createImageSet(t)
-	out := filepath.Join(t.TempDir(), "out.mp4")
-	cmd := newCLIRenderCommand(t, "--input", in, "--output", out, "--profile", "fhd", "--ffmpeg-bin", filepath.Join(t.TempDir(), "not-found"), "--ffprobe-bin", ffprobe)
+	cmd := newCLIRenderCommand(t, "--input", in, "--profile", "fhd", "--ffmpeg-bin", filepath.Join(t.TempDir(), "not-found"), "--ffprobe-bin", ffprobe)
 	err := cmd.Run()
 	if err == nil {
 		t.Fatal("expected non-zero exit")

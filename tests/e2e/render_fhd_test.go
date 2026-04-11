@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -10,8 +9,7 @@ import (
 func TestRenderFHDHappyPath(t *testing.T) {
 	ffmpeg, ffprobe := createFakeBinaries(t)
 	in := createImageSet(t)
-	out := filepath.Join(t.TempDir(), "fhd.mp4")
-	cmd := newCLIRenderCommand(t, "--input", in, "--output", out, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
+	cmd := newCLIRenderCommand(t, "--input", in, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
 	if outb, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("render failed: %v output=%s", err, string(outb))
 	}
@@ -20,10 +18,8 @@ func TestRenderFHDHappyPath(t *testing.T) {
 func TestRenderFHDKenBurnsMedium(t *testing.T) {
 	ffmpeg, ffprobe := createFakeBinaries(t)
 	in := createImageSet(t)
-	out := filepath.Join(t.TempDir(), "fhd-kenburns-medium.mp4")
 	cmd := newCLIRenderCommand(t,
 		"--input", in,
-		"--output", out,
 		"--profile", "fhd",
 		"--image-effect", "kenburns-medium",
 		"--ffmpeg-bin", ffmpeg,
@@ -37,8 +33,7 @@ func TestRenderFHDKenBurnsMedium(t *testing.T) {
 func TestRenderFHDWithMP3AudioOrdered(t *testing.T) {
 	ffmpeg, ffprobe, argsLog := createFakeBinariesWithArgsCapture(t)
 	in := createImageAndAudioSet(t)
-	out := filepath.Join(t.TempDir(), "fhd-audio.mp4")
-	cmd := newCLIRenderCommand(t, "--input", in, "--output", out, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
+	cmd := newCLIRenderCommand(t, "--input", in, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
 	if outb, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("render failed: %v output=%s", err, string(outb))
 	}
@@ -63,8 +58,7 @@ func TestRenderFHDWithMP3AudioOrdered(t *testing.T) {
 func TestRenderFHDFadeEnabledOutputGeneration(t *testing.T) {
 	ffmpeg, ffprobe, argsLog := createFakeBinariesWithArgsCapture(t)
 	in := createImageSet(t)
-	out := filepath.Join(t.TempDir(), "fhd-fades.mp4")
-	cmd := newCLIRenderCommand(t, "--input", in, "--output", out, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
+	cmd := newCLIRenderCommand(t, "--input", in, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
 	if outb, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("render failed: %v output=%s", err, string(outb))
 	}
@@ -81,9 +75,8 @@ func TestRenderFHDFadeEnabledOutputGeneration(t *testing.T) {
 func TestRenderFHDMixedMediaArgsStableAcrossRuns(t *testing.T) {
 	ffmpeg, ffprobe, argsLog := createFakeBinariesWithArgsCapture(t)
 	in := createImageAndAudioSet(t)
-	out := filepath.Join(t.TempDir(), "fhd-stable.mp4")
 	run := func() string {
-		cmd := newCLIRenderCommand(t, "--input", in, "--output", out, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
+		cmd := newCLIRenderCommand(t, "--input", in, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
 		if outb, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("render failed: %v output=%s", err, string(outb))
 		}
@@ -103,10 +96,8 @@ func TestRenderFHDMixedMediaArgsStableAcrossRuns(t *testing.T) {
 func TestRenderFHDWithExifOverlayArgs(t *testing.T) {
 	ffmpeg, ffprobe, argsLog := createFakeBinariesWithArgsCapture(t)
 	in := createImageSet(t)
-	out := filepath.Join(t.TempDir(), "fhd-exif-overlay.mp4")
 	cmd := newCLIRenderCommand(t,
 		"--input", in,
-		"--output", out,
 		"--profile", "fhd",
 		"--exif-overlay",
 		"--exif-font-size", "42",
@@ -143,10 +134,8 @@ func TestRenderFHDWithExifOverlayFontBoundaries(t *testing.T) {
 		t.Run(size, func(t *testing.T) {
 			ffmpeg, ffprobe, argsLog := createFakeBinariesWithArgsCapture(t)
 			in := createImageSet(t)
-			out := filepath.Join(t.TempDir(), "fhd-exif-boundary-"+size+".mp4")
 			cmd := newCLIRenderCommand(t,
 				"--input", in,
-				"--output", out,
 				"--profile", "fhd",
 				"--exif-overlay",
 				"--exif-font-size", size,
@@ -164,5 +153,24 @@ func TestRenderFHDWithExifOverlayFontBoundaries(t *testing.T) {
 				t.Fatalf("expected fontsize=%s in ffmpeg args, got: %s", size, string(argsBytes))
 			}
 		})
+	}
+}
+
+func TestRenderFHDWithSelectedFPS(t *testing.T) {
+	ffmpeg, ffprobe := createFakeBinaries(t)
+	in := createImageAndVideoSet(t)
+	cmd := newCLIRenderCommand(t,
+		"--input", in,
+		"--profile", "fhd",
+		"--fps", "30",
+		"--ffmpeg-bin", ffmpeg,
+		"--ffprobe-bin", ffprobe,
+	)
+	outb, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("render failed: %v output=%s", err, string(outb))
+	}
+	if !strings.Contains(string(outb), "media: images=2 videos=1 fps=30") {
+		t.Fatalf("expected selected fps summary output, got: %s", string(outb))
 	}
 }

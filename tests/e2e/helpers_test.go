@@ -123,3 +123,14 @@ func createImageAndAudioSet(t *testing.T) string {
 	}
 	return dir
 }
+
+func createImageAndVideoSet(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	for _, n := range []string{"a.jpg", "b.jpg", "clip.mp4"} {
+		if err := os.WriteFile(filepath.Join(dir, n), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir
+}

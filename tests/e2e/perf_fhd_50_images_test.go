@@ -20,9 +20,8 @@ func TestPerfFHD50Images(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	out := filepath.Join(t.TempDir(), "perf.mp4")
 	start := time.Now()
-	cmd := newCLIRenderCommand(t, "--input", dir, "--output", out, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
+	cmd := newCLIRenderCommand(t, "--input", dir, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
 	if outb, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("perf render failed: %v output=%s", err, string(outb))
 	}

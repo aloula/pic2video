@@ -10,6 +10,9 @@ import (
 type RenderJob struct {
 	InputAssets           []media.Asset
 	AudioAssets           []string
+	OutputFPS             int
+	ImageCount            int
+	VideoCount            int
 	OutputPath            string
 	ExifOverlayEnabled    bool
 	ExifFontSize          int
@@ -40,6 +43,9 @@ type RenderSummary struct {
 	EffectiveResolution string
 	EffectiveEncoder    string
 	OutputPath          string
+	OutputFPS           int
+	ImageCount          int
+	VideoCount          int
 	ExifOverlayEnabled  bool
 	ExifFontSize        int
 	ExifFooterOffsetPx  int

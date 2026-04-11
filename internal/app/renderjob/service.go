@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -135,14 +137,27 @@ func (s *Service) Run(ctx context.Context, job RenderJob) (RenderSummary, error)
 	}
 	job.InputAssets = assets
 	for i, a := range job.InputAssets {
-		p, err := ffmpeg.ProbeImage(job.FFprobeBin, a.Path)
+		p, err := ffmpeg.ProbeMedia(job.FFprobeBin, a.Path)
 		if err == nil {
 			job.InputAssets[i].Width = p.Width
 			job.InputAssets[i].Height = p.Height
+			if p.DurationSec > 0 {
+				job.InputAssets[i].DurationSec = p.DurationSec
+			}
+			if p.FrameRate > 0 {
+				job.InputAssets[i].FrameRate = p.FrameRate
+			}
+			if strings.TrimSpace(p.Format) != "" {
+				job.InputAssets[i].Format = p.Format
+			}
 		}
 	}
 	if err := ValidateJob(job); err != nil {
 		return BuildSummary(job, started, "failed", err), err
+	}
+	if err := os.MkdirAll(filepath.Dir(job.OutputPath), 0o755); err != nil {
+		ce := &ClassifiedError{Class: ErrEnvironment, Msg: "failed to prepare output directory", Err: err}
+		return BuildSummary(job, started, "failed", ce), ce
 	}
 	if _, err := exec.LookPath(job.FFmpegBin); err == nil || job.FFmpegBin == "" {
 		has := nvenc.Available(job.FFmpegBin)
@@ -157,15 +172,27 @@ func (s *Service) Run(ctx context.Context, job RenderJob) (RenderSummary, error)
 		return BuildSummary(job, started, "failed", ce), ce
 	}
 	job.Warnings = EvaluateQualityWarnings(job, job.InputAssets)
+	for _, a := range job.InputAssets {
+		if a.MediaType == "video" && a.FrameRate > 0 {
+			if math.Abs(a.FrameRate-float64(job.OutputFPS)) > 0.5 {
+				job.Warnings = append(job.Warnings, fmt.Sprintf("normalized video fps for %s from %.2f to %d", a.Path, a.FrameRate, job.OutputFPS))
+			}
+		}
+	}
 	overlayLines := []string(nil)
 	if job.ExifOverlayEnabled {
 		overlayLines = make([]string, 0, len(job.InputAssets))
 		for _, a := range job.InputAssets {
+			if a.MediaType == "video" {
+				// Video segments should not render EXIF overlay text.
+				overlayLines = append(overlayLines, "")
+				continue
+			}
 			exif, _ := fsio.ExtractExif(a.Path, job.FFprobeBin)
 			overlayLines = append(overlayLines, FormatExifOverlayLine(exif))
 		}
 	}
-	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudio(
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPS(
 		job.OutputPath,
 		job.InputAssets,
 		job.AudioAssets,
@@ -175,6 +202,7 @@ func (s *Service) Run(ctx context.Context, job RenderJob) (RenderSummary, error)
 		job.Profile.Width,
 		job.Profile.Height,
 		job.EffectiveEncoder,
+		job.OutputFPS,
 		ffmpeg.OverlayOptions{
 			Enabled:        job.ExifOverlayEnabled,
 			FontSize:       job.ExifFontSize,

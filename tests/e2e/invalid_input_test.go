@@ -8,8 +8,7 @@ import (
 
 func TestInvalidInputExitCode(t *testing.T) {
 	ffmpeg, ffprobe := createFakeBinaries(t)
-	out := filepath.Join(t.TempDir(), "bad.mp4")
-	cmd := newCLIRenderCommand(t, "--input", filepath.Join(t.TempDir(), "missing"), "--output", out, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
+	cmd := newCLIRenderCommand(t, "--input", filepath.Join(t.TempDir(), "missing"), "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
 	err := cmd.Run()
 	if err == nil {
 		t.Fatal("expected non-zero exit")
@@ -22,8 +21,7 @@ func TestInvalidInputExitCode(t *testing.T) {
 func TestInvalidExifFontSizeExitCode(t *testing.T) {
 	ffmpeg, ffprobe := createFakeBinaries(t)
 	in := createImageSet(t)
-	out := filepath.Join(t.TempDir(), "bad-font.mp4")
-	cmd := newCLIRenderCommand(t, "--input", in, "--output", out, "--profile", "fhd", "--exif-overlay", "--exif-font-size", "20", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
+	cmd := newCLIRenderCommand(t, "--input", in, "--profile", "fhd", "--exif-overlay", "--exif-font-size", "20", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
 	err := cmd.Run()
 	if err == nil {
 		t.Fatal("expected non-zero exit")
