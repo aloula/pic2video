@@ -95,6 +95,16 @@ Render with auto-detected MP3 background audio from input directory:
   --profile uhd
 ```
 
+Render with EXIF footer overlay:
+
+```bash
+./bin/pic2video render \
+  --input ./photos \
+  --profile fhd \
+  --exif-overlay \
+  --exif-font-size 42
+```
+
 Status output example:
 
 ```text
@@ -103,8 +113,10 @@ details: input=./photos output=./out/slideshow-cpu.mp4 profile=fhd effect=kenbur
 timing: image-duration=5.0s transition-duration=1.0s
 order: mode=exif order-file=-
 audio: files=2 order=alphabetical
+exif-overlay: enabled=true font-size=42
 status=success
 result: profile=fhd resolution=1920x1080 encoder:auto->nvenc processed=3 files=3
+exif-overlay: enabled=true font-size=42
 output: format=MP4 elapsed=< 1s output=./out/slideshow-cpu.mp4 warnings=0
 ```
 
@@ -155,6 +167,8 @@ EXIF date-based ordering (use photo capture time):
   - `explicit`: manifest file order
 - `--order-file <file>` (required with `--order explicit`)
 - `--encoder <auto|nvenc|cpu>` (default: `auto`)
+- `--exif-overlay` (default: `false`; enables EXIF metadata footer overlay)
+- `--exif-font-size <int>` (default: `42`; valid range: `36` to `60`, enforced when `--exif-overlay` is enabled)
 - `--overwrite` (default: true — overwrite output if it exists)
 
 ## Render status fields

@@ -78,3 +78,33 @@ func TestListMP3AssetsCaseVarianceDeterministic(t *testing.T) {
 		t.Fatalf("case-variance deterministic ordering mismatch: got=%v want=%v", got, want)
 	}
 }
+
+func TestCLIValidationExifFontSizeOutOfRange(t *testing.T) {
+	for _, size := range []string{"35", "61"} {
+		cmd := newUnitCLICommand(t, "render", "--input", "/nonexistent/directory", "--exif-overlay", "--exif-font-size", size)
+		err := cmd.Run()
+		if err == nil {
+			t.Fatalf("expected non-zero exit for out-of-range font size: %s", size)
+		}
+		if ee, ok := err.(*exec.ExitError); ok {
+			if ee.ExitCode() != 2 {
+				t.Fatalf("expected exit code 2 (ErrInvalidArguments), got %d for size %s", ee.ExitCode(), size)
+			}
+		}
+	}
+}
+
+func TestCLIValidationExifFontSizeBoundariesAccepted(t *testing.T) {
+	for _, size := range []string{"36", "60"} {
+		cmd := newUnitCLICommand(t, "render", "--input", "/nonexistent/directory", "--exif-overlay", "--exif-font-size", size)
+		err := cmd.Run()
+		if err == nil {
+			t.Fatalf("expected non-zero exit for nonexistent input, size=%s", size)
+		}
+		if ee, ok := err.(*exec.ExitError); ok {
+			if ee.ExitCode() != 3 {
+				t.Fatalf("expected exit code 3 (input validation), got %d for size %s", ee.ExitCode(), size)
+			}
+		}
+	}
+}

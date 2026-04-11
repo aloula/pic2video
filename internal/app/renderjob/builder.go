@@ -6,18 +6,22 @@ import (
 )
 
 type BuildOptions struct {
-	OutputPath      string
-	AudioAssets     []string
-	ProfileName     string
-	ImageEffect     string
-	ImageDuration   float64
-	Transition      float64
-	Overwrite       bool
-	OrderMode       string
-	OrderFile       string
-	RequestedEncode string
-	FFmpegBin       string
-	FFprobeBin      string
+	OutputPath         string
+	AudioAssets        []string
+	ExifOverlay        bool
+	ExifFontSize       int
+	ExifFooterOffsetPx int
+	ExifBoxAlpha       float64
+	ProfileName        string
+	ImageEffect        string
+	ImageDuration      float64
+	Transition         float64
+	Overwrite          bool
+	OrderMode          string
+	OrderFile          string
+	RequestedEncode    string
+	FFmpegBin          string
+	FFprobeBin         string
 }
 
 func BuildJob(opts BuildOptions, assets []media.Asset) (RenderJob, error) {
@@ -29,6 +33,10 @@ func BuildJob(opts BuildOptions, assets []media.Asset) (RenderJob, error) {
 		InputAssets:           assets,
 		AudioAssets:           opts.AudioAssets,
 		OutputPath:            opts.OutputPath,
+		ExifOverlayEnabled:    opts.ExifOverlay,
+		ExifFontSize:          opts.ExifFontSize,
+		ExifFooterOffsetPx:    opts.ExifFooterOffsetPx,
+		ExifBoxAlpha:          opts.ExifBoxAlpha,
 		Profile:               p,
 		ImageEffect:           opts.ImageEffect,
 		ImageDurationSec:      opts.ImageDuration,

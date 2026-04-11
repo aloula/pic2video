@@ -3,8 +3,11 @@ package unit
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/loula/pic2video/internal/app/cli"
+	"github.com/loula/pic2video/internal/app/renderjob"
+	"github.com/loula/pic2video/internal/infra/fsio"
 )
 
 func TestFormatOutputFormat(t *testing.T) {
@@ -51,7 +54,7 @@ func TestFormatElapsed(t *testing.T) {
 }
 
 func TestFormatSummaryIncludesNewFields(t *testing.T) {
-	got := cli.FormatSummary("fhd", "1920x1080", "auto", "cpu", "/tmp/out.mp4", 45.321, 12, nil, false)
+	got := cli.FormatSummary("fhd", "1920x1080", true, 42, 10, 0.4, "auto", "cpu", "/tmp/out.mp4", 45.321, 12, nil, false)
 	if !strings.Contains(got, "status=success") {
 		t.Fatalf("expected success status in summary: %s", got)
 	}
@@ -73,6 +76,9 @@ func TestFormatSummaryIncludesNewFields(t *testing.T) {
 	if !strings.Contains(got, "elapsed=45.3s") {
 		t.Fatalf("expected human-readable elapsed in summary: %s", got)
 	}
+	if !strings.Contains(got, "exif-overlay: enabled=true font-size=42 footer-offset=10 box-alpha=0.40") {
+		t.Fatalf("expected exif overlay fields in summary: %s", got)
+	}
 }
 
 func TestFormatAnnouncement(t *testing.T) {
@@ -87,6 +93,10 @@ func TestFormatAnnouncement(t *testing.T) {
 		OrderFile:          "",
 		AudioFiles:         2,
 		AudioOrder:         "alphabetical",
+		ExifOverlay:        false,
+		ExifFontSize:       0,
+		ExifFooterOffsetPx: 10,
+		ExifBoxAlpha:       0.4,
 		Encoder:            "auto",
 		Overwrite:          true,
 		Files:              3,
@@ -117,5 +127,23 @@ func TestFormatAnnouncement(t *testing.T) {
 	}
 	if !strings.Contains(got, "audio: files=2 order=alphabetical") {
 		t.Fatalf("expected audio summary in startup announcement: %s", got)
+	}
+	if !strings.Contains(got, "exif-overlay: enabled=false font-size=0 footer-offset=10 box-alpha=0.40") {
+		t.Fatalf("expected exif overlay startup fields in announcement: %s", got)
+	}
+}
+
+func TestFormatExifOverlayLineExactOrderAndDate(t *testing.T) {
+	line := renderjob.FormatExifOverlayLine(&fsio.ExifData{
+		CameraModel:   "Canon R5",
+		FocalDistance: "35mm",
+		ShutterSpeed:  "1/250",
+		Aperture:      "2.8",
+		ISO:           "400",
+		CreateDate:    time.Date(2024, 8, 15, 12, 0, 0, 0, time.UTC),
+	})
+	want := "Canon R5 - 35mm - 1/250s - f/2.8 - 400 - 15/08/2024"
+	if line != want {
+		t.Fatalf("unexpected overlay line\ngot:  %s\nwant: %s", line, want)
 	}
 }

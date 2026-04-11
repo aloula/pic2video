@@ -2,7 +2,9 @@ package renderjob
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/loula/pic2video/internal/app/pipeline"
@@ -12,6 +14,46 @@ import (
 )
 
 type Service struct{}
+
+func FormatExifOverlayLine(exif *fsio.ExifData) string {
+	if exif == nil {
+		exif = &fsio.ExifData{}
+	}
+	return fmt.Sprintf(
+		"%s - %s - %s - %s - %s - %s",
+		fsio.NormalizeExifValue(exif.CameraModel),
+		fsio.NormalizeExifValue(exif.FocalDistance),
+		formatSpeed(exif.ShutterSpeed),
+		formatAperture(exif.Aperture),
+		fsio.NormalizeExifValue(exif.ISO),
+		fsio.FormatCapturedDate(exif.CreateDate),
+	)
+}
+
+func formatSpeed(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return "Unknown"
+	}
+	if strings.HasPrefix(v, "1/") && strings.HasSuffix(v, "s") {
+		return v
+	}
+	if strings.HasPrefix(v, "1/") {
+		return v + "s"
+	}
+	return "1/" + v + "s"
+}
+
+func formatAperture(v string) string {
+	v = strings.TrimSpace(v)
+	if v == "" {
+		return "Unknown"
+	}
+	if strings.HasPrefix(strings.ToLower(v), "f/") {
+		return v
+	}
+	return "f/" + v
+}
 
 func (s *Service) Run(ctx context.Context, job RenderJob) (RenderSummary, error) {
 	started := time.Now()
@@ -47,6 +89,14 @@ func (s *Service) Run(ctx context.Context, job RenderJob) (RenderSummary, error)
 		return BuildSummary(job, started, "failed", ce), ce
 	}
 	job.Warnings = EvaluateQualityWarnings(job, job.InputAssets)
+	overlayLines := []string(nil)
+	if job.ExifOverlayEnabled {
+		overlayLines = make([]string, 0, len(job.InputAssets))
+		for _, a := range job.InputAssets {
+			exif, _ := fsio.ExtractExif(a.Path, job.FFprobeBin)
+			overlayLines = append(overlayLines, FormatExifOverlayLine(exif))
+		}
+	}
 	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudio(
 		job.OutputPath,
 		job.InputAssets,
@@ -57,6 +107,13 @@ func (s *Service) Run(ctx context.Context, job RenderJob) (RenderSummary, error)
 		job.Profile.Width,
 		job.Profile.Height,
 		job.EffectiveEncoder,
+		ffmpeg.OverlayOptions{
+			Enabled:        job.ExifOverlayEnabled,
+			FontSize:       job.ExifFontSize,
+			FooterOffsetPx: job.ExifFooterOffsetPx,
+			BoxAlpha:       job.ExifBoxAlpha,
+			Lines:          overlayLines,
+		},
 	)
 	if err := ffmpeg.Run(ctx, job.FFmpegBin, args); err != nil {
 		ce := &ClassifiedError{Class: ErrExecution, Msg: "ffmpeg execution failed", Err: err}

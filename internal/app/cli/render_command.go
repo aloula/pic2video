@@ -15,6 +15,11 @@ import (
 func newRenderCommand() *cobra.Command {
 	var input, output, profileName, imageEffect, orderMode, orderFile, encoder string
 	var imageDur, transDur float64
+	var exifOverlay bool
+	var exifFontSize int
+	var debugExif bool
+	exifFooterOffsetPx := 10
+	exifBoxAlpha := 0.4
 	var overwrite bool
 	var ffmpegBin, ffprobeBin string
 
@@ -51,6 +56,9 @@ func newRenderCommand() *cobra.Command {
 			if orderMode == "explicit" && orderFile == "" {
 				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--order-file required for --order explicit"}
 			}
+			if exifOverlay && (exifFontSize < 36 || exifFontSize > 60) {
+				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--exif-font-size must be between 36 and 60"}
+			}
 			assets, err := fsio.ListImageAssets(input)
 			if err != nil {
 				return &renderjob.ClassifiedError{Class: renderjob.ErrInputValidation, Msg: "failed to read input assets", Err: err}
@@ -74,6 +82,27 @@ func newRenderCommand() *cobra.Command {
 				}
 			}
 			assets = pipeline.ApplyOrderExt(orderMode, assets, explicit, ffprobeBin)
+			if debugExif {
+				for i, a := range assets {
+					exif, exifErr := fsio.ExtractExif(a.Path, ffprobeBin)
+					if exifErr != nil {
+						fmt.Fprintf(cmd.OutOrStdout(), "debug-exif: index=%d path=%s error=%v\n", i, a.Path, exifErr)
+						continue
+					}
+					fmt.Fprintf(
+						cmd.OutOrStdout(),
+						"debug-exif: index=%d path=%s model=%q focal=%q speed=%q aperture=%q iso=%q captured=%s\n",
+						i,
+						a.Path,
+						exif.CameraModel,
+						exif.FocalDistance,
+						exif.ShutterSpeed,
+						exif.Aperture,
+						exif.ISO,
+						fsio.FormatCapturedDate(exif.CreateDate),
+					)
+				}
+			}
 			audioOrder := "-"
 			if len(audioAssets) > 0 {
 				audioOrder = "alphabetical"
@@ -89,23 +118,31 @@ func newRenderCommand() *cobra.Command {
 				OrderFile:          orderFile,
 				AudioFiles:         len(audioAssets),
 				AudioOrder:         audioOrder,
+				ExifOverlay:        exifOverlay,
+				ExifFontSize:       exifFontSize,
+				ExifFooterOffsetPx: exifFooterOffsetPx,
+				ExifBoxAlpha:       exifBoxAlpha,
 				Encoder:            encoder,
 				Overwrite:          overwrite,
 				Files:              len(assets),
 			}))
 			job, err := renderjob.BuildJob(renderjob.BuildOptions{
-				OutputPath:      output,
-				AudioAssets:     audioAssets,
-				ProfileName:     profileName,
-				ImageEffect:     imageEffect,
-				ImageDuration:   imageDur,
-				Transition:      transDur,
-				Overwrite:       overwrite,
-				OrderMode:       orderMode,
-				OrderFile:       orderFile,
-				RequestedEncode: encoder,
-				FFmpegBin:       ffmpegBin,
-				FFprobeBin:      ffprobeBin,
+				OutputPath:         output,
+				AudioAssets:        audioAssets,
+				ExifOverlay:        exifOverlay,
+				ExifFontSize:       exifFontSize,
+				ExifFooterOffsetPx: exifFooterOffsetPx,
+				ExifBoxAlpha:       exifBoxAlpha,
+				ProfileName:        profileName,
+				ImageEffect:        imageEffect,
+				ImageDuration:      imageDur,
+				Transition:         transDur,
+				Overwrite:          overwrite,
+				OrderMode:          orderMode,
+				OrderFile:          orderFile,
+				RequestedEncode:    encoder,
+				FFmpegBin:          ffmpegBin,
+				FFprobeBin:         ffprobeBin,
 			}, assets)
 			if err != nil {
 				return err
@@ -116,7 +153,7 @@ func newRenderCommand() *cobra.Command {
 				return err
 			}
 			has := nvenc.Available(ffmpegBin)
-			fmt.Fprintln(cmd.OutOrStdout(), FormatSummary(summary.ProfileName, summary.EffectiveResolution, encoder, summary.EffectiveEncoder, summary.OutputPath, summary.ElapsedSeconds, summary.ProcessedAssets, summary.Warnings, has))
+			fmt.Fprintln(cmd.OutOrStdout(), FormatSummary(summary.ProfileName, summary.EffectiveResolution, summary.ExifOverlayEnabled, summary.ExifFontSize, exifFooterOffsetPx, exifBoxAlpha, encoder, summary.EffectiveEncoder, summary.OutputPath, summary.ElapsedSeconds, summary.ProcessedAssets, summary.Warnings, has))
 			return nil
 		},
 	}
@@ -129,6 +166,9 @@ func newRenderCommand() *cobra.Command {
 	cmd.Flags().Float64Var(&transDur, "transition-duration", 1, "Cross-fade transition duration in seconds (default: 1)")
 	cmd.Flags().StringVar(&orderMode, "order", "name", "Ordering mode: name|time|exif|explicit (default: name)")
 	cmd.Flags().StringVar(&orderFile, "order-file", "", "Path to explicit order manifest file")
+	cmd.Flags().BoolVar(&exifOverlay, "exif-overlay", false, "Enable EXIF metadata footer overlay")
+	cmd.Flags().IntVar(&exifFontSize, "exif-font-size", 42, "EXIF overlay font size (36-60)")
+	cmd.Flags().BoolVar(&debugExif, "debug-exif", false, "Print extracted EXIF values for each image before rendering")
 	cmd.Flags().StringVar(&encoder, "encoder", "auto", "Encoder preference: auto|nvenc|cpu (default: auto)")
 	cmd.Flags().BoolVar(&overwrite, "overwrite", true, "Overwrite output file if it exists (default: true)")
 	cmd.Flags().StringVar(&ffmpegBin, "ffmpeg-bin", envOrDefault("P2V_FFMPEG_BIN", "ffmpeg"), "Path to ffmpeg binary")

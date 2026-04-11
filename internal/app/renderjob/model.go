@@ -11,6 +11,10 @@ type RenderJob struct {
 	InputAssets           []media.Asset
 	AudioAssets           []string
 	OutputPath            string
+	ExifOverlayEnabled    bool
+	ExifFontSize          int
+	ExifFooterOffsetPx    int
+	ExifBoxAlpha          float64
 	Profile               profile.Profile
 	ImageEffect           string
 	ImageDurationSec      float64
@@ -36,6 +40,10 @@ type RenderSummary struct {
 	EffectiveResolution string
 	EffectiveEncoder    string
 	OutputPath          string
+	ExifOverlayEnabled  bool
+	ExifFontSize        int
+	ExifFooterOffsetPx  int
+	ExifBoxAlpha        float64
 	Status              string
 	ErrorMessage        string
 	Warnings            []string

@@ -83,3 +83,39 @@ func TestBuildRenderCommandArgsNoAudioLeavesVideoOnlyMap(t *testing.T) {
 		t.Fatalf("did not expect audio map when no mp3 assets are present, got: %s", joined)
 	}
 }
+
+func TestBuildRenderCommandArgsOverlayEnabledAddsDrawtext(t *testing.T) {
+	assets := []media.Asset{{Path: "a.jpg"}, {Path: "b.jpg"}}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudio(
+		"out.mp4", assets, nil, "static", 5, 1, 1920, 1080, "cpu",
+		ffmpeg.OverlayOptions{Enabled: true, FontSize: 42, FooterOffsetPx: 10, BoxAlpha: 0.4, Lines: []string{"A", "B"}},
+	)
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "drawtext=") {
+		t.Fatalf("expected drawtext filter when overlay enabled, got: %s", joined)
+	}
+	if !strings.Contains(joined, "fontsize=42") {
+		t.Fatalf("expected overlay font size in drawtext args, got: %s", joined)
+	}
+	if !strings.Contains(joined, "y=h-th-10") {
+		t.Fatalf("expected 10px footer offset in drawtext args, got: %s", joined)
+	}
+	if !strings.Contains(joined, "fontcolor=white") {
+		t.Fatalf("expected white overlay text color, got: %s", joined)
+	}
+	if !strings.Contains(joined, "boxcolor=black@0.40") {
+		t.Fatalf("expected semi-transparent box color in drawtext args, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsOverlayDisabledOmitsDrawtext(t *testing.T) {
+	assets := []media.Asset{{Path: "a.jpg"}, {Path: "b.jpg"}}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudio(
+		"out.mp4", assets, nil, "static", 5, 1, 3840, 2160, "cpu",
+		ffmpeg.OverlayOptions{Enabled: false, FontSize: 60, FooterOffsetPx: 10, BoxAlpha: 0.4, Lines: []string{"A", "B"}},
+	)
+	joined := strings.Join(args, " ")
+	if strings.Contains(joined, "drawtext=") {
+		t.Fatalf("did not expect drawtext filter when overlay disabled, got: %s", joined)
+	}
+}

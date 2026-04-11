@@ -20,6 +20,10 @@ type StartOptions struct {
 	OrderFile          string
 	AudioFiles         int
 	AudioOrder         string
+	ExifOverlay        bool
+	ExifFontSize       int
+	ExifFooterOffsetPx int
+	ExifBoxAlpha       float64
 	Encoder            string
 	Overwrite          bool
 	Files              int
@@ -61,7 +65,8 @@ func FormatAnnouncement(opts StartOptions) string {
 			"details: input=%s output=%s profile=%s effect=%s encoder=%s overwrite=%t\n"+
 			"timing: image-duration=%.1fs transition-duration=%.1fs\n"+
 			"order: mode=%s order-file=%s\n"+
-			"audio: files=%d order=%s",
+			"audio: files=%d order=%s\n"+
+			"exif-overlay: enabled=%t font-size=%d footer-offset=%d box-alpha=%.2f",
 		opts.Files,
 		FormatOutputFormat(opts.Output),
 		opts.Input,
@@ -76,20 +81,29 @@ func FormatAnnouncement(opts StartOptions) string {
 		orderFile,
 		opts.AudioFiles,
 		audioOrder,
+		opts.ExifOverlay,
+		opts.ExifFontSize,
+		opts.ExifFooterOffsetPx,
+		opts.ExifBoxAlpha,
 	)
 }
 
-func FormatSummary(profile, res, requested, effective, output string, elapsed float64, processed int, warnings []string, nvencAvailable bool) string {
+func FormatSummary(profile, res string, exifOverlay bool, exifFontSize, exifFooterOffsetPx int, exifBoxAlpha float64, requested, effective, output string, elapsed float64, processed int, warnings []string, nvencAvailable bool) string {
 	report := nvenc.BuildReport(requested, effective, nvencAvailable)
 	return fmt.Sprintf(
 		"status=success\n"+
 			"result: profile=%s resolution=%s %s processed=%d files=%d\n"+
+			"exif-overlay: enabled=%t font-size=%d footer-offset=%d box-alpha=%.2f\n"+
 			"output: format=%s elapsed=%s output=%s warnings=%d",
 		profile,
 		res,
 		report,
 		processed,
 		processed,
+		exifOverlay,
+		exifFontSize,
+		exifFooterOffsetPx,
+		exifBoxAlpha,
 		FormatOutputFormat(output),
 		FormatElapsed(elapsed),
 		output,
