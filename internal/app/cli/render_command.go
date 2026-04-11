@@ -4,18 +4,21 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/loula/pic2video/internal/app/pipeline"
 	"github.com/loula/pic2video/internal/app/renderjob"
+	"github.com/loula/pic2video/internal/domain/media"
 	"github.com/loula/pic2video/internal/infra/fsio"
 	"github.com/loula/pic2video/internal/infra/nvenc"
 	"github.com/spf13/cobra"
 )
 
 func newRenderCommand() *cobra.Command {
-	var input, output, profileName, imageEffect, orderMode, orderFile, encoder string
+	var input, profileName, imageEffect, orderMode, orderFile, encoder string
 	var imageDur, transDur float64
+	var outputFPS int
 	var exifOverlay bool
 	var exifFontSize int
 	var debugExif bool
@@ -35,14 +38,7 @@ func newRenderCommand() *cobra.Command {
 			if profileName == "" {
 				profileName = "uhd"
 			}
-			if output == "" {
-				// Generate output filename based on profile
-				if profileName == "fhd" {
-					output = "slideshow_fhd.mp4"
-				} else {
-					output = "slideshow_uhd.mp4"
-				}
-			}
+			output := defaultOutputPath(profileName)
 			if imageEffect == "" {
 				imageEffect = "static"
 			}
@@ -61,9 +57,15 @@ func newRenderCommand() *cobra.Command {
 			if exifOverlay && (exifFontSize < 36 || exifFontSize > 60) {
 				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--exif-font-size must be between 36 and 60"}
 			}
-			assets, err := fsio.ListImageAssets(input)
+			if outputFPS != 0 && (outputFPS < 24 || outputFPS > 60) {
+				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--fps must be between 24 and 60"}
+			}
+			assets, err := fsio.ListMixedAssets(input)
 			if err != nil {
 				return &renderjob.ClassifiedError{Class: renderjob.ErrInputValidation, Msg: "failed to read input assets", Err: err}
+			}
+			if outputFPS == 0 {
+				outputFPS = 60
 			}
 			audioAssets, err := fsio.ListMP3Assets(input)
 			if err != nil {
@@ -113,6 +115,9 @@ func newRenderCommand() *cobra.Command {
 				Input:              input,
 				Output:             output,
 				Profile:            profileName,
+				OutputFPS:          outputFPS,
+				ImageFiles:         countAssetsByType(assets, "image"),
+				VideoFiles:         countAssetsByType(assets, "video"),
 				ImageEffect:        imageEffect,
 				ImageDuration:      imageDur,
 				TransitionDuration: transDur,
@@ -131,6 +136,7 @@ func newRenderCommand() *cobra.Command {
 			job, err := renderjob.BuildJob(renderjob.BuildOptions{
 				OutputPath:         output,
 				AudioAssets:        audioAssets,
+				OutputFPS:          outputFPS,
 				ExifOverlay:        exifOverlay,
 				ExifFontSize:       exifFontSize,
 				ExifFooterOffsetPx: exifFooterOffsetPx,
@@ -155,17 +161,17 @@ func newRenderCommand() *cobra.Command {
 				return err
 			}
 			has := nvenc.Available(ffmpegBin)
-			fmt.Fprintln(cmd.OutOrStdout(), FormatSummary(summary.ProfileName, summary.EffectiveResolution, summary.ExifOverlayEnabled, summary.ExifFontSize, exifFooterOffsetPx, exifBoxAlpha, encoder, summary.EffectiveEncoder, summary.OutputPath, summary.ElapsedSeconds, summary.ProcessedAssets, summary.Warnings, has))
+			fmt.Fprintln(cmd.OutOrStdout(), FormatSummaryWithMedia(summary.ProfileName, summary.EffectiveResolution, summary.ExifOverlayEnabled, summary.ExifFontSize, exifFooterOffsetPx, exifBoxAlpha, encoder, summary.EffectiveEncoder, summary.OutputPath, summary.ElapsedSeconds, summary.ProcessedAssets, summary.ImageCount, summary.VideoCount, summary.OutputFPS, summary.Warnings, has))
 			return nil
 		},
 	}
 
 	cmd.Flags().StringVar(&input, "input", "", "Input directory containing images (default: current directory)")
-	cmd.Flags().StringVar(&output, "output", "", "Output video path (default: slideshow_fhd.mp4 or slideshow_uhd.mp4 based on profile)")
 	cmd.Flags().StringVar(&profileName, "profile", "", "Output profile: fhd|uhd (default: uhd)")
 	cmd.Flags().StringVar(&imageEffect, "image-effect", "static", "Image effect: static|kenburns-low|kenburns-medium|kenburns-high (default: static)")
 	cmd.Flags().Float64Var(&imageDur, "image-duration", 5, "Per-image duration in seconds (default: 5)")
 	cmd.Flags().Float64Var(&transDur, "transition-duration", 1, "Cross-fade transition duration in seconds (default: 1)")
+	cmd.Flags().IntVar(&outputFPS, "fps", 0, "Output frames per second (24-60, default: profile default)")
 	cmd.Flags().StringVar(&orderMode, "order", "name", "Ordering mode: name|time|exif|explicit (default: name)")
 	cmd.Flags().StringVar(&orderFile, "order-file", "", "Path to explicit order manifest file")
 	cmd.Flags().BoolVar(&exifOverlay, "exif-overlay", false, "Enable EXIF metadata footer overlay")
@@ -178,6 +184,24 @@ func newRenderCommand() *cobra.Command {
 	_ = cmd.Flags().MarkHidden("ffmpeg-bin")
 	_ = cmd.Flags().MarkHidden("ffprobe-bin")
 	return cmd
+}
+
+func defaultOutputPath(profileName string) string {
+	profileName = strings.ToLower(strings.TrimSpace(profileName))
+	if profileName == "fhd" {
+		return filepath.Join("output", "slideshow_fhd.mp4")
+	}
+	return filepath.Join("output", "slideshow_uhd.mp4")
+}
+
+func countAssetsByType(assets []media.Asset, mediaType string) int {
+	count := 0
+	for _, a := range assets {
+		if string(a.MediaType) == mediaType {
+			count++
+		}
+	}
+	return count
 }
 
 func exifFooterOffsetForProfile(profileName string) int {

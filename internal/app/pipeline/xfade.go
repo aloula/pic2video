@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+
+	"github.com/loula/pic2video/internal/domain/media"
 )
 
 func BuildXFadeGraph(numAssets int, imageDur, transitionDur float64) string {
@@ -11,8 +13,15 @@ func BuildXFadeGraph(numAssets int, imageDur, transitionDur float64) string {
 }
 
 func BuildXFadeGraphWithEffect(numAssets int, imageDur, transitionDur float64, effect string, width, height int) string {
+	return BuildXFadeGraphForAssetsWithEffect(nil, numAssets, imageDur, transitionDur, effect, width, height, 60)
+}
+
+func BuildXFadeGraphForAssetsWithEffect(assets []media.Asset, numAssets int, imageDur, transitionDur float64, effect string, width, height int, outputFPS int) string {
 	if numAssets < 2 {
 		return ""
+	}
+	if outputFPS <= 0 {
+		outputFPS = 60
 	}
 	graph := ""
 	startDir := 0
@@ -25,12 +34,29 @@ func BuildXFadeGraphWithEffect(numAssets int, imageDur, transitionDur float64, e
 		}
 	}
 	for i := 0; i < numAssets; i++ {
+		effectForAsset := effect
+		asset := media.Asset{}
+		if i < len(assets) {
+			asset = assets[i]
+		}
+		if asset.MediaType == media.MediaTypeVideo {
+			effectForAsset = "static"
+		}
 		dir := (startDir + i*dirStep) % 4
-		motion := buildMotionFilterWithDirection(effect, width, height, imageDur, dir)
+		motion := buildMotionFilterWithDirection(effectForAsset, width, height, imageDur, dir)
 		if motion == "" {
-			graph += fmt.Sprintf("[%d:v]format=yuv420p,setsar=1[v%d];", i, i)
+			framing := BuildFramingFilter(width, height)
+			if asset.MediaType == media.MediaTypeVideo {
+				framingChain := framing
+				if rotFilter := BuildRotationFilter(asset.Rotation); rotFilter != "" {
+					framingChain = rotFilter + "," + framing
+				}
+				graph += fmt.Sprintf("[%d:v]%s,fps=%d,trim=duration=%.3f,setpts=PTS-STARTPTS,format=yuv420p,setsar=1[v%d];", i, framingChain, outputFPS, imageDur, i)
+			} else {
+				graph += fmt.Sprintf("[%d:v]%s,fps=%d,format=yuv420p,setsar=1[v%d];", i, framing, outputFPS, i)
+			}
 		} else {
-			graph += fmt.Sprintf("[%d:v]%s[v%d];", i, motion, i)
+			graph += fmt.Sprintf("[%d:v]%s,fps=%d[v%d];", i, motion, outputFPS, i)
 		}
 	}
 	offset := imageDur - transitionDur

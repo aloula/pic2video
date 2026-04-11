@@ -108,3 +108,33 @@ func TestCLIValidationExifFontSizeBoundariesAccepted(t *testing.T) {
 		}
 	}
 }
+
+func TestCLIValidationFPSOutOfRange(t *testing.T) {
+	for _, fps := range []string{"23", "61"} {
+		cmd := newUnitCLICommand(t, "render", "--input", "/nonexistent/directory", "--fps", fps)
+		err := cmd.Run()
+		if err == nil {
+			t.Fatalf("expected non-zero exit for out-of-range fps: %s", fps)
+		}
+		if ee, ok := err.(*exec.ExitError); ok {
+			if ee.ExitCode() != 2 {
+				t.Fatalf("expected exit code 2 for invalid fps, got %d", ee.ExitCode())
+			}
+		}
+	}
+}
+
+func TestCLIValidationFPSBoundaryAccepted(t *testing.T) {
+	for _, fps := range []string{"24", "60"} {
+		cmd := newUnitCLICommand(t, "render", "--input", "/nonexistent/directory", "--fps", fps)
+		err := cmd.Run()
+		if err == nil {
+			t.Fatalf("expected non-zero exit for nonexistent input, fps=%s", fps)
+		}
+		if ee, ok := err.(*exec.ExitError); ok {
+			if ee.ExitCode() != 3 {
+				t.Fatalf("expected input-validation exit for nonexistent input, got %d", ee.ExitCode())
+			}
+		}
+	}
+}

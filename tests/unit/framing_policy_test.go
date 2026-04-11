@@ -37,6 +37,12 @@ func TestBuildMotionFilterKenBurnsQualityDirectivesAllModes(t *testing.T) {
 			if !strings.Contains(f, "s=1920x1080") {
 				t.Fatalf("expected effect output resolution to match profile for %s: %s", mode, f)
 			}
+			if strings.Contains(f, "crop=") {
+				t.Fatalf("ken burns filter must not crop images; use pad instead for %s: %s", mode, f)
+			}
+			if !strings.Contains(f, "pad=") {
+				t.Fatalf("ken burns filter must pad to prevent cropping for %s: %s", mode, f)
+			}
 		})
 	}
 }
@@ -55,5 +61,27 @@ func TestBuildMotionFilterResolutionAware(t *testing.T) {
 	uhd := pipeline.BuildMotionFilter("kenburns-high", 3840, 2160, 5)
 	if fhd == uhd {
 		t.Fatalf("expected different filters for different resolutions")
+	}
+}
+
+func TestBuildRotationFilter(t *testing.T) {
+	cases := []struct {
+		degrees int
+		want    string
+	}{
+		{0, ""},
+		{-90, "transpose=clock"},
+		{270, "transpose=clock"},
+		{90, "transpose=cclock"},
+		{-270, "transpose=cclock"},
+		{180, "hflip,vflip"},
+		{-180, "hflip,vflip"},
+		{45, ""},
+	}
+	for _, c := range cases {
+		got := pipeline.BuildRotationFilter(c.degrees)
+		if got != c.want {
+			t.Fatalf("BuildRotationFilter(%d) = %q, want %q", c.degrees, got, c.want)
+		}
 	}
 }

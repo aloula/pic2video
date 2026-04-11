@@ -3,7 +3,7 @@ package pipeline
 import "fmt"
 
 func BuildFramingFilter(width, height int) string {
-	return fmt.Sprintf("scale=w=%d:h=%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2", width, height, width, height)
+	return fmt.Sprintf("scale=w=%d:h=%d:force_original_aspect_ratio=decrease:flags=lanczos,pad=%d:%d:(ow-iw)/2:(oh-ih)/2", width, height, width, height)
 }
 
 func BuildMotionFilter(effect string, width, height int, imageDur float64) string {
@@ -70,7 +70,7 @@ func buildMotionFilterWithDirection(effect string, width, height int, imageDur f
 	}
 
 	return fmt.Sprintf(
-		"scale=w=%d:h=%d:force_original_aspect_ratio=increase:flags=lanczos,crop=%d:%d,zoompan=z='min(zoom+%.6f,%.2f)':x='%s':y='%s':d=%d:fps=%d:s=%dx%d,format=yuv420p,setsar=1",
+		"scale=w=%d:h=%d:force_original_aspect_ratio=decrease:flags=lanczos,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,zoompan=z='min(zoom+%.6f,%.2f)':x='%s':y='%s':d=%d:fps=%d:s=%dx%d,format=yuv420p,setsar=1",
 		prepW, prepH,
 		prepW, prepH,
 		zoomStep, zoomMax,
@@ -86,6 +86,22 @@ func pseudoRandomDirection(assetIndex int) int {
 	if assetIndex < 0 {
 		assetIndex = -assetIndex
 	}
-	v := uint32(assetIndex+1)*2654435761 + 1013904223
+	v := uint32(assetIndex+1)*2654435761 + 1013904223 //nolint:gomnd
 	return int(v % 4)
+}
+
+// BuildRotationFilter returns an FFmpeg filter chain fragment that corrects
+// the display orientation encoded in the video's Display Matrix side data.
+// Returns an empty string when no rotation is needed.
+func BuildRotationFilter(rotateDegrees int) string {
+	switch rotateDegrees {
+	case -90, 270:
+		return "transpose=clock"
+	case 90, -270:
+		return "transpose=cclock"
+	case 180, -180:
+		return "hflip,vflip"
+	default:
+		return ""
+	}
 }

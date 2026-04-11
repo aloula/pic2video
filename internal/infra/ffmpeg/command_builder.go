@@ -26,6 +26,25 @@ func BuildRenderCommandArgsWithEffect(outputPath string, assets []media.Asset, i
 }
 
 func BuildRenderCommandArgsWithEffectAndAudio(outputPath string, assets []media.Asset, audioAssets []string, imageEffect string, imageDur, transitionDur float64, width, height int, encoder string, overlays ...OverlayOptions) []string {
+	return BuildRenderCommandArgsWithEffectAndAudioAndFPS(outputPath, assets, audioAssets, imageEffect, imageDur, transitionDur, width, height, encoder, 60, overlays...)
+}
+
+func BuildRenderCommandArgsWithEffectAndAudioAndFPS(outputPath string, assets []media.Asset, audioAssets []string, imageEffect string, imageDur, transitionDur float64, width, height int, encoder string, outputFPS int, overlays ...OverlayOptions) []string {
+	hasVideo := false
+	for _, a := range assets {
+		if a.MediaType == media.MediaTypeVideo {
+			hasVideo = true
+			break
+		}
+	}
+	if hasVideo {
+		if transitionDur >= imageDur {
+			transitionDur = imageDur * 0.8
+		}
+		if transitionDur <= 0 {
+			transitionDur = imageDur * 0.2
+		}
+	}
 	overlay := OverlayOptions{}
 	if len(overlays) > 0 {
 		overlay = overlays[0]
@@ -36,6 +55,10 @@ func BuildRenderCommandArgsWithEffectAndAudio(outputPath string, assets []media.
 	inputs := []string{}
 	useStaticInputs := imageEffect == "" || imageEffect == "static"
 	for _, a := range assets {
+		if a.MediaType == media.MediaTypeVideo {
+			inputs = append(inputs, "-t", fmt.Sprintf("%.3f", imageDur), "-i", a.Path)
+			continue
+		}
 		if useStaticInputs {
 			inputs = append(inputs, "-loop", "1", "-t", fmt.Sprintf("%.3f", imageDur), "-i", a.Path)
 		} else {
@@ -47,11 +70,7 @@ func BuildRenderCommandArgsWithEffectAndAudio(outputPath string, assets []media.
 	for _, audioPath := range audioAssets {
 		inputs = append(inputs, "-i", audioPath)
 	}
-	graph := pipeline.BuildXFadeGraphWithEffect(len(assets), imageDur, transitionDur, imageEffect, width, height)
-	if useStaticInputs {
-		framing := pipeline.BuildFramingFilter(width, height)
-		graph = strings.Replace(graph, "[vlast]", "[vtmp]", 1) + ";[vtmp]" + framing + "[vlast]"
-	}
+	graph := pipeline.BuildXFadeGraphForAssetsWithEffect(assets, len(assets), imageDur, transitionDur, imageEffect, width, height, outputFPS)
 	if fadeFilter := buildGlobalFadeFilter(len(assets), imageDur, transitionDur); fadeFilter != "" {
 		graph = strings.Replace(graph, "[vlast]", "[vtmp]", 1) + ";[vtmp]" + fadeFilter + "[vlast]"
 	}
@@ -60,6 +79,9 @@ func BuildRenderCommandArgsWithEffectAndAudio(outputPath string, assets []media.
 	}
 	if overlayFilter := buildOverlayFilter(overlay, len(assets), imageDur, transitionDur); overlayFilter != "" {
 		graph = strings.Replace(graph, "[vlast]", "[vtmp]", 1) + ";[vtmp]" + overlayFilter + "[vlast]"
+	}
+	if outputFPS <= 0 {
+		outputFPS = 60
 	}
 	args := []string{"-y"}
 	args = append(args, inputs...)
@@ -72,7 +94,7 @@ func BuildRenderCommandArgsWithEffectAndAudio(outputPath string, assets []media.
 	args = append(args,
 		"-pix_fmt", "yuv420p",
 		"-movflags", "+faststart",
-		"-r", "60",
+		"-r", fmt.Sprintf("%d", outputFPS),
 	)
 	if len(audioAssets) > 0 {
 		args = append(args,
@@ -138,7 +160,10 @@ func buildOverlayFilter(overlay OverlayOptions, assetCount int, imageDur, transi
 			end = total
 		}
 		line := "Unknown - Unknown - Unknown - Unknown - Unknown - Unknown"
-		if i < len(overlay.Lines) && strings.TrimSpace(overlay.Lines[i]) != "" {
+		if i < len(overlay.Lines) {
+			if strings.TrimSpace(overlay.Lines[i]) == "" {
+				continue
+			}
 			line = overlay.Lines[i]
 		}
 		filters = append(filters,

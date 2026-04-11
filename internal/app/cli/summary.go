@@ -13,6 +13,9 @@ type StartOptions struct {
 	Input              string
 	Output             string
 	Profile            string
+	OutputFPS          int
+	ImageFiles         int
+	VideoFiles         int
 	ImageEffect        string
 	ImageDuration      float64
 	TransitionDuration float64
@@ -63,6 +66,7 @@ func FormatAnnouncement(opts StartOptions) string {
 	return fmt.Sprintf(
 		"status=starting files=%d format=%s\n"+
 			"details: input=%s output=%s profile=%s effect=%s encoder=%s overwrite=%t\n"+
+			"media: images=%d videos=%d fps=%d\n"+
 			"timing: image-duration=%.1fs transition-duration=%.1fs\n"+
 			"order: mode=%s order-file=%s\n"+
 			"audio: files=%d order=%s\n"+
@@ -75,6 +79,9 @@ func FormatAnnouncement(opts StartOptions) string {
 		opts.ImageEffect,
 		opts.Encoder,
 		opts.Overwrite,
+		opts.ImageFiles,
+		opts.VideoFiles,
+		opts.OutputFPS,
 		opts.ImageDuration,
 		opts.TransitionDuration,
 		opts.Order,
@@ -89,10 +96,15 @@ func FormatAnnouncement(opts StartOptions) string {
 }
 
 func FormatSummary(profile, res string, exifOverlay bool, exifFontSize, exifFooterOffsetPx int, exifBoxAlpha float64, requested, effective, output string, elapsed float64, processed int, warnings []string, nvencAvailable bool) string {
+	return FormatSummaryWithMedia(profile, res, exifOverlay, exifFontSize, exifFooterOffsetPx, exifBoxAlpha, requested, effective, output, elapsed, processed, 0, 0, 60, warnings, nvencAvailable)
+}
+
+func FormatSummaryWithMedia(profile, res string, exifOverlay bool, exifFontSize, exifFooterOffsetPx int, exifBoxAlpha float64, requested, effective, output string, elapsed float64, processed, imageCount, videoCount, fps int, warnings []string, nvencAvailable bool) string {
 	report := nvenc.BuildReport(requested, effective, nvencAvailable)
 	return fmt.Sprintf(
 		"status=success\n"+
 			"result: profile=%s resolution=%s %s processed=%d files=%d\n"+
+			"media: images=%d videos=%d fps=%d\n"+
 			"exif-overlay: enabled=%t font-size=%d footer-offset=%d box-alpha=%.2f\n"+
 			"output: format=%s elapsed=%s output=%s warnings=%d",
 		profile,
@@ -100,6 +112,9 @@ func FormatSummary(profile, res string, exifOverlay bool, exifFontSize, exifFoot
 		report,
 		processed,
 		processed,
+		imageCount,
+		videoCount,
+		fps,
 		exifOverlay,
 		exifFontSize,
 		exifFooterOffsetPx,

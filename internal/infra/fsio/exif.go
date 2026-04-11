@@ -207,9 +207,13 @@ func ExtractExif(imagePath, ffprobeBin string) (*ExifData, error) {
 	if strings.TrimSpace(ffprobeBin) == "" {
 		ffprobeBin = "ffprobe"
 	}
-	// FFprobe command to extract image metadata including EXIF
+	// FFprobe command to extract media metadata including EXIF/video tags.
+	// -show_format/-show_streams are required so format_tags/stream_tags entries
+	// are actually emitted across different ffprobe builds.
 	cmd := exec.Command(ffprobeBin,
 		"-v", "error",
+		"-show_format",
+		"-show_streams",
 		"-print_format", "json",
 		"-show_entries", "format_tags:stream_tags",
 		imagePath,

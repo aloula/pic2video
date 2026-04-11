@@ -12,9 +12,8 @@ import (
 func TestSmoke(t *testing.T) {
 	ffmpeg, ffprobe := createFakeBinaries(t)
 	in := createImageSet(t)
-	out := filepath.Join(t.TempDir(), "smoke.mp4")
 
-	cmd := newCLIRenderCommand(t, "--input", in, "--output", out, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
+	cmd := newCLIRenderCommand(t, "--input", in, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
 	outb, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("render failed: %v output=%s", err, string(outb))
@@ -71,9 +70,8 @@ func TestSmoke(t *testing.T) {
 func TestSmokeAnnouncementTiming(t *testing.T) {
 	ffmpeg, ffprobe := createFakeBinaries(t)
 	in := createImageSet(t)
-	out := filepath.Join(t.TempDir(), "timing.mp4")
 
-	cmd := newCLIRenderCommand(t, "--input", in, "--output", out, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
+	cmd := newCLIRenderCommand(t, "--input", in, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		t.Fatal(err)
@@ -113,10 +111,9 @@ func TestSmokeAnnouncementTiming(t *testing.T) {
 
 func TestSmokeNoCompletionOnFailure(t *testing.T) {
 	ffmpeg, ffprobe := createFakeBinaries(t)
-	out := filepath.Join(t.TempDir(), "failed.mp4")
 	missingInput := filepath.Join(t.TempDir(), "missing")
 
-	cmd := newCLIRenderCommand(t, "--input", missingInput, "--output", out, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
+	cmd := newCLIRenderCommand(t, "--input", missingInput, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
 	outb, err := cmd.CombinedOutput()
 	if err == nil {
 		t.Fatal("expected non-zero exit")

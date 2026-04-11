@@ -4,7 +4,7 @@ Create YouTube-ready slideshow videos from photos using cross-fade transitions p
 
 ## Overview
 
-`pic2video` is a Go CLI that converts ordered images into a single 16:9 video.
+`pic2video` is a Go CLI that converts ordered media (images and videos) into a single 16:9 video.
 It supports these output profiles:
 
 - `fhd` -> 1920x1080
@@ -54,19 +54,18 @@ make build-windows
 
 ## Usage
 
-Render with defaults (UHD profile, current directory input, slideshow_uhd.mp4 output):
+Render with defaults (UHD profile, current directory input, generated output under `./output`):
 
 ```bash
 ./bin/pic2video render
 ```
 
-Render FHD with custom output location:
+Render FHD:
 
 ```bash
 ./bin/pic2video render \
   --profile fhd \
-  --image-effect kenburns-medium \
-  --output ./out/slideshow.mp4
+  --image-effect kenburns-medium
 ```
 
 Render UHD:
@@ -74,7 +73,7 @@ Render UHD:
 ```bash
 ./bin/pic2video render \
   --input ./photos \
-  --output ./out/slideshow-uhd.mp4
+  --profile uhd
 ```
 
 Force CPU encoding:
@@ -82,7 +81,6 @@ Force CPU encoding:
 ```bash
 ./bin/pic2video render \
   --input ./photos \
-  --output ./out/slideshow-cpu.mp4 \
   --profile fhd \
   --encoder cpu
 ```
@@ -105,19 +103,30 @@ Render with EXIF footer overlay:
   --exif-font-size 42
 ```
 
+Render mixed photo/video media with explicit output fps:
+
+```bash
+./bin/pic2video render \
+  --input ./mixed-media \
+  --profile fhd \
+  --fps 30
+```
+
 Status output example:
 
 ```text
 status=starting files=3 format=MP4
-details: input=./photos output=./out/slideshow-cpu.mp4 profile=fhd effect=kenburns-medium encoder=auto overwrite=true
+details: input=./photos output=output/slideshow_fhd.mp4 profile=fhd effect=kenburns-medium encoder=auto overwrite=true
+media: images=3 videos=0 fps=60
 timing: image-duration=5.0s transition-duration=1.0s
 order: mode=exif order-file=-
 audio: files=2 order=alphabetical
-exif-overlay: enabled=true font-size=42
+exif-overlay: enabled=true font-size=42 footer-offset=30 box-alpha=0.40
 status=success
 result: profile=fhd resolution=1920x1080 encoder:auto->nvenc processed=3 files=3
-exif-overlay: enabled=true font-size=42
-output: format=MP4 elapsed=< 1s output=./out/slideshow-cpu.mp4 warnings=0
+media: images=3 videos=0 fps=60
+exif-overlay: enabled=true font-size=42 footer-offset=30 box-alpha=0.40
+output: format=MP4 elapsed=< 1s output=output/slideshow_fhd.mp4 warnings=0
 ```
 
 Use Ken Burns effect (resolution-aware, high quality):
@@ -150,7 +159,6 @@ EXIF date-based ordering (use photo capture time):
 `pic2video render` supports:
 
 - `--input <dir>` (default: current directory)
-- `--output <file>` (default: `slideshow_fhd.mp4` or `slideshow_uhd.mp4` based on profile)
 - `--profile <fhd|uhd>` (default: `uhd`)
 - `--image-effect <static|kenburns-low|kenburns-medium|kenburns-high>` (default: `static`)
   - `static`: no zoom/pan motion
@@ -167,9 +175,16 @@ EXIF date-based ordering (use photo capture time):
   - `explicit`: manifest file order
 - `--order-file <file>` (required with `--order explicit`)
 - `--encoder <auto|nvenc|cpu>` (default: `auto`)
+- `--fps <int>` (optional; valid range `24` to `60`; default: profile default `60`)
 - `--exif-overlay` (default: `false`; enables EXIF metadata footer overlay)
 - `--exif-font-size <int>` (default: `42`; valid range: `36` to `60`, enforced when `--exif-overlay` is enabled)
 - `--overwrite` (default: true — overwrite output if it exists)
+
+Output path policy:
+
+- The render command always writes to `./output/slideshow_fhd.mp4` or `./output/slideshow_uhd.mp4` based on the selected profile.
+- The `output/` directory is created automatically before rendering.
+- The CLI no longer accepts a custom output filename.
 
 ## Render status fields
 
@@ -195,13 +210,12 @@ Elapsed format rules:
 
 ## Validation policy (invalid media)
 
-- The CLI scans supported image extensions only (`.jpg`, `.jpeg`, `.png`, `.webp`).
+- The CLI scans supported image extensions (`.jpg`, `.jpeg`, `.png`, `.webp`) and supported video extensions (`.mp4`, `.mov`, `.mkv`, `.webm`).
 - The CLI also scans `.mp3` files in the same input directory and includes them in ascending alphabetical filename order.
 - Unsupported files are skipped during asset discovery.
 - Unsupported audio types (for example `.wav`) are ignored.
 - If discovered MP3 files cannot be opened, rendering fails with input-validation error (exit `3`).
-- If no supported images remain, the command fails with input-validation error (exit `3`).
-- Rendering requires at least 2 valid image assets; otherwise the command fails with exit `3`.
+- If no supported media assets remain, the command fails with input-validation error (exit `3`).
 - For explicit ordering mode, invalid/missing manifest entries cause input-validation failure (exit `3`).
 
 This policy satisfies FR-012 with deterministic reject/skip behavior.
@@ -247,4 +261,4 @@ RUN_PERF=1 go test ./tests/e2e -run TestPerf -count=1
 
 - If FFmpeg is not found, ensure `ffmpeg` and `ffprobe` are installed and on `PATH`.
 - If `--order explicit` fails, verify each line in the manifest points to a valid image filename/path.
-- If output exists and render fails, add `--overwrite`.
+- Generated outputs are written under `./output`; if you want a clean rerun, remove the previous file from that directory first.

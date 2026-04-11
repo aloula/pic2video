@@ -1,6 +1,7 @@
 package unit
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -42,5 +43,32 @@ func TestFormatCapturedDate(t *testing.T) {
 	tm := time.Date(2024, 12, 31, 10, 11, 12, 0, time.UTC)
 	if got := fsio.FormatCapturedDate(tm); got != "31/12/2024" {
 		t.Fatalf("expected DD/MM/YYYY formatted date, got=%s", got)
+	}
+}
+
+func TestApplyOrderNameMixedMedia(t *testing.T) {
+	assets := []media.Asset{{Path: "b.mp4", MediaType: media.MediaTypeVideo}, {Path: "a.jpg", MediaType: media.MediaTypeImage}}
+	ordered := pipeline.ApplyOrder("name", assets, nil)
+	if filepath.Base(ordered[0].Path) != "a.jpg" {
+		t.Fatalf("expected a.jpg first, got %s", ordered[0].Path)
+	}
+	if ordered[0].MediaType != media.MediaTypeImage || ordered[1].MediaType != media.MediaTypeVideo {
+		t.Fatalf("expected mixed media types preserved, got %+v", ordered)
+	}
+}
+
+func TestListMixedAssetsDiscovery(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"a.jpg", "b.mp4", "ignore.txt"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assets, err := fsio.ListMixedAssets(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(assets) != 2 {
+		t.Fatalf("expected 2 mixed assets, got %d", len(assets))
 	}
 }

@@ -16,3 +16,12 @@ func TestBuildXFadeGraph(t *testing.T) {
 		t.Fatalf("expected second offset in graph: %s", g)
 	}
 }
+
+func TestBuildXFadeGraphMixedMediaTimingStable(t *testing.T) {
+	g := pipeline.BuildXFadeGraphWithEffect(4, 5, 1, "static", 1920, 1080)
+	for _, want := range []string{"offset=4.000", "offset=8.000", "offset=12.000"} {
+		if !strings.Contains(g, want) {
+			t.Fatalf("expected %s in mixed-media timeline graph, got: %s", want, g)
+		}
+	}
+}
