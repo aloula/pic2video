@@ -18,10 +18,10 @@ func TestBuildRenderCommandArgsStaticUsesLoopInputs(t *testing.T) {
 	if !strings.Contains(joined, "-t 5.000") {
 		t.Fatalf("expected static mode to include per-image duration input arg, got: %s", joined)
 	}
-	if !strings.Contains(joined, "fade=t=in:st=0:d=1.000") {
+	if !strings.Contains(joined, "fade=t=in:st=0:d=0.500") {
 		t.Fatalf("expected global fade-in filter in static mode, got: %s", joined)
 	}
-	if !strings.Contains(joined, "fade=t=out:st=8.000:d=1.000") {
+	if !strings.Contains(joined, "fade=t=out:st=8.500:d=0.500") {
 		t.Fatalf("expected global fade-out filter in static mode, got: %s", joined)
 	}
 }
@@ -39,10 +39,10 @@ func TestBuildRenderCommandArgsKenBurnsUsesSingleFrameInputs(t *testing.T) {
 	if !strings.Contains(joined, "zoompan=") {
 		t.Fatalf("expected kenburns filter graph to include zoompan, got: %s", joined)
 	}
-	if !strings.Contains(joined, "fade=t=in:st=0:d=1.000") {
+	if !strings.Contains(joined, "fade=t=in:st=0:d=0.500") {
 		t.Fatalf("expected global fade-in filter in kenburns mode, got: %s", joined)
 	}
-	if !strings.Contains(joined, "fade=t=out:st=8.000:d=1.000") {
+	if !strings.Contains(joined, "fade=t=out:st=8.500:d=0.500") {
 		t.Fatalf("expected global fade-out filter in kenburns mode, got: %s", joined)
 	}
 }
@@ -52,14 +52,76 @@ func TestBuildRenderCommandArgsWithAudioMapsAout(t *testing.T) {
 	audio := []string{"ambient_a.mp3", "ambient_b.mp3"}
 	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudio("out.mp4", assets, audio, "static", 5, 1, 1920, 1080, "cpu")
 	joined := strings.Join(args, " ")
+	if strings.Contains(joined, "-stream_loop -1") {
+		t.Fatalf("did not expect per-input mp3 loop; tracks should play sequentially, got: %s", joined)
+	}
 	if !strings.Contains(joined, "[3:a][4:a]concat=n=2:v=0:a=1") {
 		t.Fatalf("expected concatenated ordered audio labels, got: %s", joined)
 	}
-	if !strings.Contains(joined, "atrim=duration=13.000") {
-		t.Fatalf("expected bounded audio duration to match slideshow timeline, got: %s", joined)
+	if !strings.Contains(joined, "apad=whole_dur=13.000,atrim=duration=13.000") {
+		t.Fatalf("expected padded+bounded audio duration to match slideshow timeline, got: %s", joined)
 	}
 	if !strings.Contains(joined, "-map [aout]") {
 		t.Fatalf("expected mapped audio output, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsWithVideoAudioSourceMapsVideoTrack(t *testing.T) {
+	assets := []media.Asset{
+		{Path: "a.jpg", MediaType: media.MediaTypeImage},
+		{Path: "clip.mp4", MediaType: media.MediaTypeVideo, HasAudio: true},
+	}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSource("out.mp4", assets, nil, "static", 5, 1, 1920, 1080, "cpu", 60, "video")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "[1:a]atrim=duration=9.000,asetpts=N/SR/TB[vsrc]") {
+		t.Fatalf("expected video audio source track from video input, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-map [aout]") {
+		t.Fatalf("expected mapped audio output for video audio source, got: %s", joined)
+	}
+}
+
+// TestBuildRenderCommandArgsShortVideoAudioSourcePadded verifies that when
+// --audio-source video is used alongside images, and the video clips are shorter
+// than imageDur, apad is inserted before atrim so that -shortest does not
+// truncate the output before the image segments are visible.
+// Both videos are clamped to imageDur=5s (2 videos + 3 images = 5 slots,
+// 4 transitions → total = 25-4 = 21s). Video audio concat = 5.5s which is much
+// shorter; without apad, -shortest would end the output at ~5.5s.
+func TestBuildRenderCommandArgsShortVideoAudioSourcePadded(t *testing.T) {
+	assets := []media.Asset{
+		{Path: "v1.mp4", MediaType: media.MediaTypeVideo, DurationSec: 2.5, HasAudio: true},
+		{Path: "v2.mp4", MediaType: media.MediaTypeVideo, DurationSec: 3.0, HasAudio: true},
+		{Path: "a.jpg", MediaType: media.MediaTypeImage},
+		{Path: "b.jpg", MediaType: media.MediaTypeImage},
+		{Path: "c.jpg", MediaType: media.MediaTypeImage},
+	}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSource("out.mp4", assets, nil, "static", 5, 1, 1920, 1080, "cpu", 60, "video")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "apad=whole_dur=") {
+		t.Fatalf("expected apad filter to extend short video audio to full timeline duration, got: %s", joined)
+	}
+	if !strings.Contains(joined, "atrim=duration=17.833") {
+		t.Fatalf("expected final audio trim to updated slideshow duration (17.833s), got: %s", joined)
+	}
+	if !strings.Contains(joined, "-map [aout]") {
+		t.Fatalf("expected audio output mapped, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsWithMixAudioSourceUsesAmix(t *testing.T) {
+	assets := []media.Asset{
+		{Path: "a.jpg", MediaType: media.MediaTypeImage},
+		{Path: "clip.mp4", MediaType: media.MediaTypeVideo, HasAudio: true},
+	}
+	audio := []string{"ambient_a.mp3"}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSource("out.mp4", assets, audio, "static", 5, 1, 1920, 1080, "cpu", 60, "mix")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "amix=inputs=2") {
+		t.Fatalf("expected amix chain for mixed audio source, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-map [aout]") {
+		t.Fatalf("expected mapped audio output for mixed audio source, got: %s", joined)
 	}
 }
 
@@ -81,6 +143,28 @@ func TestBuildRenderCommandArgsNoAudioLeavesVideoOnlyMap(t *testing.T) {
 	joined := strings.Join(args, " ")
 	if strings.Contains(joined, "[aout]") {
 		t.Fatalf("did not expect audio map when no mp3 assets are present, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-an") {
+		t.Fatalf("expected -an to mute output when no audio source is available, got: %s", joined)
+	}
+}
+
+// TestBuildRenderCommandArgsMp3SourceWithVideoAudioMutes verifies that when
+// --audio-source mp3 (the default) is selected but there are no MP3 files,
+// video audio from input clips is NOT included. The -an flag must be present.
+func TestBuildRenderCommandArgsMp3SourceWithVideoAudioMutes(t *testing.T) {
+	assets := []media.Asset{
+		{Path: "clip.mp4", MediaType: media.MediaTypeVideo, HasAudio: true},
+		{Path: "a.jpg", MediaType: media.MediaTypeImage},
+	}
+	// no audioAssets, source = "mp3" (default)
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSource("out.mp4", assets, nil, "static", 5, 1, 1920, 1080, "cpu", 60, "mp3")
+	joined := strings.Join(args, " ")
+	if strings.Contains(joined, "[aout]") {
+		t.Fatalf("video audio must not be mapped when --audio-source mp3 has no MP3 files, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-an") {
+		t.Fatalf("expected -an to silence video audio when --audio-source mp3 has no MP3 files, got: %s", joined)
 	}
 }
 
@@ -133,6 +217,27 @@ func TestBuildRenderCommandArgsMixedMediaUsesVideoInputWithoutLoop(t *testing.T)
 	if !strings.Contains(joined, "clip.mp4") {
 		t.Fatalf("expected video input to be present, got: %s", joined)
 	}
+	if !strings.Contains(joined, "tpad=stop_mode=clone") {
+		t.Fatalf("expected video slots to be padded for mixed-media timeline stability, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsLongVideoUsesFullDuration(t *testing.T) {
+	assets := []media.Asset{
+		{Path: "a.jpg", MediaType: media.MediaTypeImage},
+		{Path: "clip.mp4", MediaType: media.MediaTypeVideo, DurationSec: 12},
+	}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudio("out.mp4", assets, nil, "static", 5, 1, 1920, 1080, "cpu")
+	joined := strings.Join(args, " ")
+	if strings.Contains(joined, "-t 5.000 -i clip.mp4") {
+		t.Fatalf("did not expect long video input to be truncated to image duration, got: %s", joined)
+	}
+	if !strings.Contains(joined, "trim=duration=12.000") {
+		t.Fatalf("expected long video slot to preserve full clip duration, got: %s", joined)
+	}
+	if !strings.Contains(joined, "fade=t=out:st=15.500:d=0.500") {
+		t.Fatalf("expected global fade-out timing based on full mixed timeline duration, got: %s", joined)
+	}
 }
 
 func TestBuildRenderCommandArgsFPSPropagation(t *testing.T) {
@@ -141,6 +246,30 @@ func TestBuildRenderCommandArgsFPSPropagation(t *testing.T) {
 	joined := strings.Join(args, " ")
 	if !strings.Contains(joined, "-r 30") {
 		t.Fatalf("expected propagated output fps in ffmpeg args, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsCPUQualityTuning(t *testing.T) {
+	assets := []media.Asset{{Path: "a.jpg", MediaType: media.MediaTypeImage}, {Path: "b.jpg", MediaType: media.MediaTypeImage}}
+	args := ffmpeg.BuildRenderCommandArgsWithEffect("out.mp4", assets, "static", 5, 1, 1920, 1080, "libx264")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "-b:v 6M") || !strings.Contains(joined, "-maxrate 8M") || !strings.Contains(joined, "-bufsize 4M") {
+		t.Fatalf("expected improved FHD bitrate tier, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-preset slower") || !strings.Contains(joined, "-crf 16") {
+		t.Fatalf("expected libx264 quality controls (preset+crf), got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsNVENCQualityTuning(t *testing.T) {
+	assets := []media.Asset{{Path: "a.jpg", MediaType: media.MediaTypeImage}, {Path: "b.jpg", MediaType: media.MediaTypeImage}}
+	args := ffmpeg.BuildRenderCommandArgsWithEffect("out.mp4", assets, "static", 5, 1, 3840, 2160, "h264_nvenc")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "-b:v 20M") || !strings.Contains(joined, "-maxrate 24M") || !strings.Contains(joined, "-bufsize 12M") {
+		t.Fatalf("expected improved UHD bitrate tier, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-preset p6") || !strings.Contains(joined, "-rc vbr_hq") || !strings.Contains(joined, "-cq 17") {
+		t.Fatalf("expected nvenc quality controls (preset+rc+cq), got: %s", joined)
 	}
 }
 
@@ -225,6 +354,43 @@ func TestBuildRenderCommandArgsVideoNoRotationSkipsTranspose(t *testing.T) {
 	joined := strings.Join(args, " ")
 	if strings.Contains(joined, "transpose=") {
 		t.Fatalf("did not expect transpose filter for zero-rotation video, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsShortVideosUnder4SecondsUseOneThirdXfade(t *testing.T) {
+	assets := []media.Asset{
+		{Path: "first_short.mov", MediaType: media.MediaTypeVideo, DurationSec: 2.0},
+		{Path: "middle.jpg", MediaType: media.MediaTypeImage},
+		{Path: "last_short.mov", MediaType: media.MediaTypeVideo, DurationSec: 1.5},
+	}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPS("out.mp4", assets, nil, "static", 5, 1, 1920, 1080, "cpu", 60)
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "xfade=transition=fade:duration=0.333:offset=1.667") {
+		t.Fatalf("expected first edge to use 1/3s xfade for <4s video with offset 1.667, got: %s", joined)
+	}
+	if !strings.Contains(joined, "xfade=transition=fade:duration=1.000:offset=5.667") {
+		t.Fatalf("expected second edge to keep configured transition duration (1.000s), got: %s", joined)
+	}
+	if strings.Contains(joined, "stop_mode=add") {
+		t.Fatalf("did not expect black padding for short videos after xfade timing fix, got: %s", joined)
+	}
+	if !strings.Contains(joined, "fade=t=in:st=0:d=0.500") {
+		t.Fatalf("expected global output fade-in to remain 0.5s, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsShortVideoAtLeast4SecondsKeepsConfiguredTransition(t *testing.T) {
+	assets := []media.Asset{
+		{Path: "first_short.mov", MediaType: media.MediaTypeVideo, DurationSec: 4.0},
+		{Path: "middle.jpg", MediaType: media.MediaTypeImage},
+	}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPS("out.mp4", assets, nil, "static", 5, 1, 1920, 1080, "cpu", 60)
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "xfade=transition=fade:duration=1.000:offset=3.000") {
+		t.Fatalf("expected configured 1.000s xfade for 4s video with offset 3.000, got: %s", joined)
+	}
+	if strings.Contains(joined, "fade=t=in:st=0:d=0.250") {
+		t.Fatalf("did not expect per-clip 0.250 short-video fade-in filter once xfade timing handles transitions, got: %s", joined)
 	}
 }
 

@@ -59,7 +59,7 @@ func TestApplyOrderNameMixedMedia(t *testing.T) {
 
 func TestListMixedAssetsDiscovery(t *testing.T) {
 	dir := t.TempDir()
-	for _, name := range []string{"a.jpg", "b.mp4", "ignore.txt"} {
+	for _, name := range []string{"a.jpg", "b.mp4", "c.heic", "ignore.txt"} {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -68,7 +68,7 @@ func TestListMixedAssetsDiscovery(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(assets) != 2 {
-		t.Fatalf("expected 2 mixed assets, got %d", len(assets))
+	if len(assets) != 3 {
+		t.Fatalf("expected 3 mixed assets, got %d", len(assets))
 	}
 }

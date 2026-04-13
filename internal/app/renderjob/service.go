@@ -147,6 +147,7 @@ func (s *Service) Run(ctx context.Context, job RenderJob) (RenderSummary, error)
 			if p.FrameRate > 0 {
 				job.InputAssets[i].FrameRate = p.FrameRate
 			}
+			job.InputAssets[i].HasAudio = p.HasAudio
 			if strings.TrimSpace(p.Format) != "" {
 				job.InputAssets[i].Format = p.Format
 			}
@@ -192,7 +193,7 @@ func (s *Service) Run(ctx context.Context, job RenderJob) (RenderSummary, error)
 			overlayLines = append(overlayLines, FormatExifOverlayLine(exif))
 		}
 	}
-	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPS(
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSource(
 		job.OutputPath,
 		job.InputAssets,
 		job.AudioAssets,
@@ -203,6 +204,7 @@ func (s *Service) Run(ctx context.Context, job RenderJob) (RenderSummary, error)
 		job.Profile.Height,
 		job.EffectiveEncoder,
 		job.OutputFPS,
+		job.AudioSource,
 		ffmpeg.OverlayOptions{
 			Enabled:        job.ExifOverlayEnabled,
 			FontSize:       job.ExifFontSize,

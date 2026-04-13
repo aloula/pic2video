@@ -23,6 +23,7 @@ type StartOptions struct {
 	OrderFile          string
 	AudioFiles         int
 	AudioOrder         string
+	AudioSource        string
 	ExifOverlay        bool
 	ExifFontSize       int
 	ExifFooterOffsetPx int
@@ -62,6 +63,10 @@ func FormatAnnouncement(opts StartOptions) string {
 	if strings.TrimSpace(audioOrder) == "" {
 		audioOrder = "-"
 	}
+	audioSource := opts.AudioSource
+	if strings.TrimSpace(audioSource) == "" {
+		audioSource = "mp3"
+	}
 
 	return fmt.Sprintf(
 		"status=starting files=%d format=%s\n"+
@@ -69,7 +74,7 @@ func FormatAnnouncement(opts StartOptions) string {
 			"media: images=%d videos=%d fps=%d\n"+
 			"timing: image-duration=%.1fs transition-duration=%.1fs\n"+
 			"order: mode=%s order-file=%s\n"+
-			"audio: files=%d order=%s\n"+
+			"audio: files=%d order=%s source=%s\n"+
 			"exif-overlay: enabled=%t font-size=%d footer-offset=%d box-alpha=%.2f",
 		opts.Files,
 		FormatOutputFormat(opts.Output),
@@ -88,6 +93,7 @@ func FormatAnnouncement(opts StartOptions) string {
 		orderFile,
 		opts.AudioFiles,
 		audioOrder,
+		audioSource,
 		opts.ExifOverlay,
 		opts.ExifFontSize,
 		opts.ExifFooterOffsetPx,

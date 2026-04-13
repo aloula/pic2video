@@ -32,17 +32,84 @@ Or with make:
 make build
 ```
 
+## Versioning
+
+Both CLI and GUI read build metadata from a config file named `version.json`.
+Lookup order at runtime:
+
+- `P2V_VERSION_FILE` (if set)
+- `version.json` next to the executable
+- `./version.json` in current working directory
+
+Build metadata fields:
+
+- `VERSION` (default: `git describe --tags --always --dirty`)
+- `COMMIT` (default: short git SHA)
+- `BUILD_DATE` (default: UTC timestamp)
+
+You can override these values at build time (the Make targets will write `version.json` next to built binaries):
+
+```bash
+make build VERSION=v1.2.3 COMMIT=abc1234 BUILD_DATE=2026-04-11T12:00:00Z
+make build-gui VERSION=v1.2.3 COMMIT=abc1234 BUILD_DATE=2026-04-11T12:00:00Z
+```
+
+Check version output:
+
+```bash
+./bin/cli/pic2video --version
+./bin/cli/pic2video version
+./bin/gui/pic2video-gui --version
+```
+
+Build desktop GUI binary:
+
+```bash
+go build -o bin/pic2video-gui ./cmd/pic2video-gui
+```
+
+Or with make:
+
+```bash
+make build-gui
+```
+
 ### Cross-platform builds
 
 ```bash
 make build-all
 ```
 
+`make build-all` is host-aware (smart build):
+
+- Detects host platform.
+- Builds what is feasible for that host (for example on Linux/WSL: CLI matrix + GUI Linux/Windows, and skips macOS GUI with a clear message).
+
+Install build dependencies only when needed (for example once per machine setup):
+
+```bash
+make install-build-deps
+```
+
+Alias:
+
+```bash
+make bootstrap-build-deps
+```
+
+If you want the strict full matrix target without host-aware skips, use:
+
+```bash
+make build-all-full
+```
+
 Generated artifacts:
 
-- `bin/pic2video-linux-amd64`
-- `bin/pic2video-darwin-amd64`
-- `bin/pic2video-windows-amd64.exe`
+- `bin/cli/pic2video-linux-amd64`
+- `bin/cli/pic2video-darwin-amd64`
+- `bin/cli/pic2video-windows-amd64.exe`
+- `bin/gui/pic2video-gui-linux-amd64`
+- `bin/gui/pic2video-gui-windows-amd64.exe`
 
 You can also build each platform separately:
 
@@ -51,6 +118,30 @@ make build-linux
 make build-macos
 make build-windows
 ```
+
+## GUI Usage
+
+Run GUI directly:
+
+```bash
+./bin/gui/pic2video-gui
+```
+
+Or with make:
+
+```bash
+make run-gui
+```
+
+GUI behavior summary:
+
+- Runs on Windows, Linux, and macOS (Go + Fyne desktop app).
+- Input and output folders default to the directory where the app is launched.
+- Output selection is folder-only; filename stays profile-auto-generated (`slideshow_fhd.mp4` / `slideshow_uhd.mp4`).
+- GUI exposes current user-facing render options (profile, image effect, fps, order mode, EXIF overlay, encoder, overwrite, etc.).
+- Start is blocked with actionable feedback when input contains no supported media or output folder is not writable.
+- Status lifecycle includes: `idle`, `loading files`, `processing`, `finished`, `failed`.
+- Log panel streams runtime output from the render process in chronological order.
 
 ## Usage
 
@@ -210,7 +301,7 @@ Elapsed format rules:
 
 ## Validation policy (invalid media)
 
-- The CLI scans supported image extensions (`.jpg`, `.jpeg`, `.png`, `.webp`) and supported video extensions (`.mp4`, `.mov`, `.mkv`, `.webm`).
+- The CLI scans supported image extensions (`.jpg`, `.jpeg`, `.png`, `.webp`, `.heic`, `.heif`, `.bmp`, `.tif`, `.tiff`) and supported video extensions (`.mp4`, `.mov`, `.mkv`, `.webm`).
 - The CLI also scans `.mp3` files in the same input directory and includes them in ascending alphabetical filename order.
 - Unsupported files are skipped during asset discovery.
 - Unsupported audio types (for example `.wav`) are ignored.

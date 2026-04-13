@@ -1,9 +1,11 @@
 package cli
 
 import (
-"os"
+	"fmt"
+	"os"
 
-"github.com/spf13/cobra"
+	appversion "github.com/loula/pic2video/internal/app/version"
+	"github.com/spf13/cobra"
 )
 
 func newRootCommand() *cobra.Command {
@@ -12,7 +14,16 @@ func newRootCommand() *cobra.Command {
 		Short:         "Create 16:9 slideshow videos from photos",
 		SilenceErrors: true,
 		SilenceUsage:  true,
+		Version:       appversion.Short(),
 	}
+	cmd.SetVersionTemplate("{{.Use}} {{.Version}}\n")
+	cmd.AddCommand(&cobra.Command{
+		Use:   "version",
+		Short: "Print detailed build version information",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Fprintln(cmd.OutOrStdout(), appversion.Info())
+		},
+	})
 	cmd.AddCommand(newRenderCommand())
 	return cmd
 }
