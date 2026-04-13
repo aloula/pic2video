@@ -8,6 +8,7 @@ import (
 type BuildOptions struct {
 	OutputPath         string
 	AudioAssets        []string
+	AudioSource        string
 	OutputFPS          int
 	ExifOverlay        bool
 	ExifFontSize       int
@@ -36,6 +37,10 @@ func BuildJob(opts BuildOptions, assets []media.Asset) (RenderJob, error) {
 	}
 	imageCount := 0
 	videoCount := 0
+	audioSource := opts.AudioSource
+	if audioSource == "" {
+		audioSource = "mp3"
+	}
 	for _, a := range assets {
 		if a.MediaType == media.MediaTypeVideo {
 			videoCount++
@@ -46,6 +51,7 @@ func BuildJob(opts BuildOptions, assets []media.Asset) (RenderJob, error) {
 	return RenderJob{
 		InputAssets:           assets,
 		AudioAssets:           opts.AudioAssets,
+		AudioSource:           audioSource,
 		OutputFPS:             fps,
 		ImageCount:            imageCount,
 		VideoCount:            videoCount,

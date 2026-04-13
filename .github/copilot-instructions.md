@@ -9,6 +9,7 @@ Auto-generated from all feature plans. Last updated: 2026-04-11
 - Go 1.23+ + Standard library, `github.com/spf13/cobra`, existing ffmpeg/ffprobe integration (003-ken-burns-effect)
 - Go 1.23+ + Go standard library, `github.com/spf13/cobra`, external FFmpeg/FFprobe binaries (008-video-photo-mixed-input)
 - N/A (filesystem-based media processing) (008-video-photo-mixed-input)
+- Go 1.23+ + Go standard library, `fyne.io/fyne/v2` (desktop UI), existing `github.com/spf13/cobra` render CLI stack, external FFmpeg/FFprobe binaries (010-create-feature-branch)
 
 ## Project Structure
 
@@ -26,9 +27,9 @@ tests/
 Go 1.23+: Follow standard conventions
 
 ## Recent Changes
+- 010-create-feature-branch: Added Go 1.23+ + Go standard library, `fyne.io/fyne/v2` (desktop UI), existing `github.com/spf13/cobra` render CLI stack, external FFmpeg/FFprobe binaries
 - 008-video-photo-mixed-input: Added Go 1.23+ + Go standard library, `github.com/spf13/cobra`, external FFmpeg/FFprobe binaries
 - 007-create-feature-branch: Added Go 1.23+ + Standard library, `github.com/spf13/cobra`, existing ffmpeg/ffprobe integration
-- 005-mp3-audio-fades: Added Go 1.23+ + Standard library, `github.com/spf13/cobra`, existing ffmpeg/ffprobe integration
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

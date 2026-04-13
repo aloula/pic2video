@@ -12,6 +12,7 @@ import (
 
 var supportedExt = map[string]bool{
 	".jpg": true, ".jpeg": true, ".png": true, ".webp": true,
+	".heic": true, ".heif": true, ".bmp": true, ".tif": true, ".tiff": true,
 }
 
 var supportedVideoExt = map[string]bool{

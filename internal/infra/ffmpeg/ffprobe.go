@@ -12,6 +12,7 @@ import (
 
 type probeResult struct {
 	Streams []struct {
+		CodecType  string `json:"codec_type"`
 		Width      int    `json:"width"`
 		Height     int    `json:"height"`
 		Codec      string `json:"codec_name"`
@@ -55,7 +56,7 @@ func ProbeMedia(ffprobeBin, path string) (media.Asset, error) {
 	}
 	// -show_streams emits full stream metadata including side_data_list (Display Matrix rotation)
 	// and tags (rotate). -show_entries limits the format section to just duration.
-	cmd := exec.Command(ffprobeBin, "-v", "error", "-select_streams", "v:0",
+	cmd := exec.Command(ffprobeBin, "-v", "error",
 		"-show_streams", "-show_entries", "format=duration",
 		"-of", "json", path)
 	out, err := cmd.Output()
@@ -69,7 +70,20 @@ func ProbeMedia(ffprobeBin, path string) (media.Asset, error) {
 	if len(pr.Streams) == 0 {
 		return media.Asset{}, fmt.Errorf("no stream metadata for %s", path)
 	}
-	s := pr.Streams[0]
+	videoIndex := -1
+	hasAudio := false
+	for i, s := range pr.Streams {
+		if strings.EqualFold(s.CodecType, "audio") {
+			hasAudio = true
+		}
+		if videoIndex < 0 && (strings.EqualFold(s.CodecType, "video") || s.Width > 0 || s.Height > 0) {
+			videoIndex = i
+		}
+	}
+	if videoIndex < 0 {
+		return media.Asset{}, fmt.Errorf("no video stream metadata for %s", path)
+	}
+	s := pr.Streams[videoIndex]
 	dur, _ := strconv.ParseFloat(strings.TrimSpace(pr.Format.Duration), 64)
 	fps := parseFPS(s.AvgRate)
 	if fps <= 0 {
@@ -95,6 +109,7 @@ func ProbeMedia(ffprobeBin, path string) (media.Asset, error) {
 		Height:      s.Height,
 		DurationSec: dur,
 		FrameRate:   fps,
+		HasAudio:    hasAudio,
 		Format:      s.Codec,
 		Rotation:    rotation,
 		IsValid:     s.Width > 0 && s.Height > 0,

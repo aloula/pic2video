@@ -16,7 +16,7 @@ import (
 )
 
 func newRenderCommand() *cobra.Command {
-	var input, profileName, imageEffect, orderMode, orderFile, encoder string
+	var input, profileName, imageEffect, orderMode, orderFile, encoder, audioSource string
 	var imageDur, transDur float64
 	var outputFPS int
 	var exifOverlay bool
@@ -59,6 +59,9 @@ func newRenderCommand() *cobra.Command {
 			}
 			if outputFPS != 0 && (outputFPS < 24 || outputFPS > 60) {
 				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--fps must be between 24 and 60"}
+			}
+			if audioSource != "mp3" && audioSource != "video" && audioSource != "mix" {
+				return &renderjob.ClassifiedError{Class: renderjob.ErrInvalidArguments, Msg: "--audio-source must be one of mp3|video|mix"}
 			}
 			assets, err := fsio.ListMixedAssets(input)
 			if err != nil {
@@ -125,6 +128,7 @@ func newRenderCommand() *cobra.Command {
 				OrderFile:          orderFile,
 				AudioFiles:         len(audioAssets),
 				AudioOrder:         audioOrder,
+				AudioSource:        audioSource,
 				ExifOverlay:        exifOverlay,
 				ExifFontSize:       exifFontSize,
 				ExifFooterOffsetPx: exifFooterOffsetPx,
@@ -136,6 +140,7 @@ func newRenderCommand() *cobra.Command {
 			job, err := renderjob.BuildJob(renderjob.BuildOptions{
 				OutputPath:         output,
 				AudioAssets:        audioAssets,
+				AudioSource:        audioSource,
 				OutputFPS:          outputFPS,
 				ExifOverlay:        exifOverlay,
 				ExifFontSize:       exifFontSize,
@@ -174,6 +179,7 @@ func newRenderCommand() *cobra.Command {
 	cmd.Flags().IntVar(&outputFPS, "fps", 0, "Output frames per second (24-60, default: profile default)")
 	cmd.Flags().StringVar(&orderMode, "order", "name", "Ordering mode: name|time|exif|explicit (default: name)")
 	cmd.Flags().StringVar(&orderFile, "order-file", "", "Path to explicit order manifest file")
+	cmd.Flags().StringVar(&audioSource, "audio-source", "mp3", "Audio source: mp3|video|mix (default: mp3)")
 	cmd.Flags().BoolVar(&exifOverlay, "exif-overlay", false, "Enable EXIF metadata footer overlay")
 	cmd.Flags().IntVar(&exifFontSize, "exif-font-size", 42, "EXIF overlay font size (36-60)")
 	cmd.Flags().BoolVar(&debugExif, "debug-exif", false, "Print extracted EXIF values for each image before rendering")

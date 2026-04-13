@@ -16,6 +16,7 @@ type Asset struct {
 	Height             int
 	DurationSec        float64
 	FrameRate          float64
+	HasAudio           bool
 	Format             string
 	Rotation           int
 	IsValid            bool

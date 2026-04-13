@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -53,5 +54,31 @@ func TestRenderMixedAspectExifOverlayMissingMetadataFallback(t *testing.T) {
 	}
 	if !strings.Contains(args, "Unknown - Unknown - Unknown - Unknown - ISO Unknown -") {
 		t.Fatalf("expected Unknown fallback values for missing exif metadata, got: %s", args)
+	}
+}
+
+func TestRenderMixedAspectTerminalShortVideoFadesNearClipEnd(t *testing.T) {
+	ffmpeg, ffprobe, argsLog := createFakeBinariesWithArgsCaptureAndShortVideoDurations(t)
+	in := t.TempDir()
+	for _, name := range []string{"a_short.mov", "b.jpg"} {
+		if err := os.WriteFile(filepath.Join(in, name), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cmd := newCLIRenderCommand(t, "--input", in, "--profile", "fhd", "--ffmpeg-bin", ffmpeg, "--ffprobe-bin", ffprobe)
+	outb, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("render failed: %v output=%s", err, string(outb))
+	}
+	argsBytes, err := os.ReadFile(argsLog)
+	if err != nil {
+		t.Fatal(err)
+	}
+	args := string(argsBytes)
+	if !strings.Contains(args, "xfade=transition=fade:duration=0.333:offset=1.167") {
+		t.Fatalf("expected 1/3s xfade for short video (<4s) into next asset, got: %s", args)
+	}
+	if strings.Contains(args, "stop_mode=add") {
+		t.Fatalf("did not expect black-frame padding after short-video xfade fix, got: %s", args)
 	}
 }

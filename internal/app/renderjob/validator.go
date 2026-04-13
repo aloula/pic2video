@@ -21,6 +21,9 @@ func ValidateJob(job RenderJob) error {
 	if job.OutputFPS < 24 || job.OutputFPS > 60 {
 		return &ClassifiedError{Class: ErrInvalidArguments, Msg: "output fps must be between 24 and 60"}
 	}
+	if job.AudioSource != "" && job.AudioSource != "mp3" && job.AudioSource != "video" && job.AudioSource != "mix" {
+		return &ClassifiedError{Class: ErrInvalidArguments, Msg: "audio source must be one of mp3|video|mix"}
+	}
 	if _, err := os.Stat(job.OutputPath); err == nil && !job.Overwrite {
 		return &ClassifiedError{Class: ErrInputValidation, Msg: "output file already exists (use --overwrite)"}
 	}

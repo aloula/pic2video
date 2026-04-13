@@ -10,6 +10,7 @@ import (
 type RenderJob struct {
 	InputAssets           []media.Asset
 	AudioAssets           []string
+	AudioSource           string
 	OutputFPS             int
 	ImageCount            int
 	VideoCount            int

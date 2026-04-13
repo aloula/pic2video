@@ -50,6 +50,9 @@ func TestRenderFHDWithMP3AudioOrdered(t *testing.T) {
 	if strings.Contains(args, "ignored.wav") {
 		t.Fatalf("expected non-mp3 audio to be ignored, got: %s", args)
 	}
+	if strings.Contains(args, "-stream_loop\n-1") {
+		t.Fatalf("did not expect per-input mp3 looping; next mp3 should play after the first, got: %s", args)
+	}
 	if !strings.Contains(args, "[aout]") {
 		t.Fatalf("expected mapped audio output in ffmpeg args, got: %s", args)
 	}
