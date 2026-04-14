@@ -61,6 +61,12 @@ func TestBuildRenderCommandArgsWithAudioMapsAout(t *testing.T) {
 	if !strings.Contains(joined, "apad=whole_dur=13.000,atrim=duration=13.000") {
 		t.Fatalf("expected padded+bounded audio duration to match slideshow timeline, got: %s", joined)
 	}
+	if !strings.Contains(joined, "afade=t=in:st=0:d=1.000") {
+		t.Fatalf("expected 1.000s audio fade-in for mp3 source, got: %s", joined)
+	}
+	if !strings.Contains(joined, "afade=t=out:st=10.000:d=3.000") {
+		t.Fatalf("expected 3.000s audio fade-out ending at timeline end for mp3 source, got: %s", joined)
+	}
 	if !strings.Contains(joined, "-map [aout]") {
 		t.Fatalf("expected mapped audio output, got: %s", joined)
 	}
@@ -76,8 +82,28 @@ func TestBuildRenderCommandArgsWithVideoAudioSourceMapsVideoTrack(t *testing.T) 
 	if !strings.Contains(joined, "[1:a]atrim=duration=9.000,asetpts=N/SR/TB[vsrc]") {
 		t.Fatalf("expected video audio source track from video input, got: %s", joined)
 	}
+	if !strings.Contains(joined, "afade=t=in:st=0:d=1.000") {
+		t.Fatalf("expected 1.000s audio fade-in for video audio source, got: %s", joined)
+	}
+	if !strings.Contains(joined, "afade=t=out:st=6.000:d=3.000") {
+		t.Fatalf("expected 3.000s audio fade-out ending at timeline end for video audio source, got: %s", joined)
+	}
 	if !strings.Contains(joined, "-map [aout]") {
 		t.Fatalf("expected mapped audio output for video audio source, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsWithVideoAudioSourceShortTimelineFadeClamp(t *testing.T) {
+	assets := []media.Asset{
+		{Path: "clip.mp4", MediaType: media.MediaTypeVideo, DurationSec: 2, HasAudio: true},
+	}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSource("out.mp4", assets, nil, "static", 5, 1, 1920, 1080, "cpu", 60, "video")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "afade=t=in:st=0:d=1.000") {
+		t.Fatalf("expected short timeline fade-in clamp to 1.000, got: %s", joined)
+	}
+	if !strings.Contains(joined, "afade=t=out:st=1.000:d=1.000") {
+		t.Fatalf("expected short timeline fade-out clamp to half of total duration, got: %s", joined)
 	}
 }
 
@@ -119,6 +145,9 @@ func TestBuildRenderCommandArgsWithMixAudioSourceUsesAmix(t *testing.T) {
 	joined := strings.Join(args, " ")
 	if !strings.Contains(joined, "amix=inputs=2") {
 		t.Fatalf("expected amix chain for mixed audio source, got: %s", joined)
+	}
+	if !strings.Contains(joined, "afade=t=in:st=0:d=1.000") || !strings.Contains(joined, "afade=t=out:st=6.000:d=3.000") {
+		t.Fatalf("expected final mixed audio to include 1s in and 3s out fades, got: %s", joined)
 	}
 	if !strings.Contains(joined, "-map [aout]") {
 		t.Fatalf("expected mapped audio output for mixed audio source, got: %s", joined)
@@ -268,7 +297,7 @@ func TestBuildRenderCommandArgsNVENCQualityTuning(t *testing.T) {
 	if !strings.Contains(joined, "-b:v 20M") || !strings.Contains(joined, "-maxrate 24M") || !strings.Contains(joined, "-bufsize 12M") {
 		t.Fatalf("expected improved UHD bitrate tier, got: %s", joined)
 	}
-	if !strings.Contains(joined, "-preset p6") || !strings.Contains(joined, "-rc vbr_hq") || !strings.Contains(joined, "-cq 17") {
+	if !strings.Contains(joined, "-preset p4") || !strings.Contains(joined, "-rc vbr") || !strings.Contains(joined, "-cq 19") {
 		t.Fatalf("expected nvenc quality controls (preset+rc+cq), got: %s", joined)
 	}
 }
