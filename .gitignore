@@ -1,8 +1,6 @@
 # Go
-*.exe
 *.test
 *.out
-bin/
 coverage/
 
 # Build artifacts
