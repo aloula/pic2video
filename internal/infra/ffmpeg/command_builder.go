@@ -228,9 +228,11 @@ func encoderQualityArgs(encoder string) []string {
 	e := strings.ToLower(strings.TrimSpace(encoder))
 	if strings.Contains(e, "nvenc") {
 		return []string{
-			"-preset", "p6",
-			"-rc", "vbr_hq",
-			"-cq", "17",
+			// Balanced defaults: materially faster than quality-first p6/vbr_hq
+			// while keeping good visual quality for slideshow content.
+			"-preset", "p4",
+			"-rc", "vbr",
+			"-cq", "19",
 			"-spatial_aq", "1",
 			"-aq-strength", "8",
 			"-temporal_aq", "1",
@@ -316,16 +318,16 @@ func buildAudioFilter(assets []media.Asset, audioInputCount int, imageDur, trans
 		// apad extends short video audio with silence so the total audio duration
 		// matches the full slideshow length. Without it, -shortest would truncate
 		// the output at the end of the last video clip, dropping image segments.
-		return videoTrack + ";[vsrc]apad=whole_dur=" + fmt.Sprintf("%.3f", total) + ",atrim=duration=" + fmt.Sprintf("%.3f", total) + ",asetpts=N/SR/TB[aout]"
+		return videoTrack + ";[vsrc]apad=whole_dur=" + fmt.Sprintf("%.3f", total) + ",atrim=duration=" + fmt.Sprintf("%.3f", total) + ",asetpts=N/SR/TB" + buildVideoAudioFadeFilter(total) + "[aout]"
 	case "mix":
 		switch {
 		case videoTrack != "" && mp3Track != "":
-			return videoTrack + ";" + mp3Track + ";[vsrc][msrc]amix=inputs=2:duration=longest:dropout_transition=2,apad=whole_dur=" + fmt.Sprintf("%.3f", total) + ",atrim=duration=" + fmt.Sprintf("%.3f", total) + ",asetpts=N/SR/TB[aout]"
+			return videoTrack + ";" + mp3Track + ";[vsrc][msrc]amix=inputs=2:duration=longest:dropout_transition=2,apad=whole_dur=" + fmt.Sprintf("%.3f", total) + ",atrim=duration=" + fmt.Sprintf("%.3f", total) + ",asetpts=N/SR/TB" + buildVideoAudioFadeFilter(total) + "[aout]"
 		case videoTrack != "":
 			// Same apad fix as video-only mode.
-			return videoTrack + ";[vsrc]apad=whole_dur=" + fmt.Sprintf("%.3f", total) + ",atrim=duration=" + fmt.Sprintf("%.3f", total) + ",asetpts=N/SR/TB[aout]"
+			return videoTrack + ";[vsrc]apad=whole_dur=" + fmt.Sprintf("%.3f", total) + ",atrim=duration=" + fmt.Sprintf("%.3f", total) + ",asetpts=N/SR/TB" + buildVideoAudioFadeFilter(total) + "[aout]"
 		case mp3Track != "":
-			return mp3Track + ";[msrc]apad=whole_dur=" + fmt.Sprintf("%.3f", total) + ",atrim=duration=" + fmt.Sprintf("%.3f", total) + ",asetpts=N/SR/TB[aout]"
+			return mp3Track + ";[msrc]apad=whole_dur=" + fmt.Sprintf("%.3f", total) + ",atrim=duration=" + fmt.Sprintf("%.3f", total) + ",asetpts=N/SR/TB" + buildVideoAudioFadeFilter(total) + "[aout]"
 		default:
 			return ""
 		}
@@ -333,8 +335,28 @@ func buildAudioFilter(assets []media.Asset, audioInputCount int, imageDur, trans
 		if mp3Track == "" {
 			return ""
 		}
-		return mp3Track + ";[msrc]apad=whole_dur=" + fmt.Sprintf("%.3f", total) + ",atrim=duration=" + fmt.Sprintf("%.3f", total) + ",asetpts=N/SR/TB[aout]"
+		return mp3Track + ";[msrc]apad=whole_dur=" + fmt.Sprintf("%.3f", total) + ",atrim=duration=" + fmt.Sprintf("%.3f", total) + ",asetpts=N/SR/TB" + buildVideoAudioFadeFilter(total) + "[aout]"
 	}
+}
+
+func buildVideoAudioFadeFilter(total float64) string {
+	if total <= 0 {
+		return ""
+	}
+	fadeInDur := 1.0
+	fadeOutDur := 3.0
+	maxFade := total / 2
+	if fadeInDur > maxFade {
+		fadeInDur = maxFade
+	}
+	if fadeOutDur > maxFade {
+		fadeOutDur = maxFade
+	}
+	if fadeInDur <= 0 || fadeOutDur <= 0 {
+		return ""
+	}
+	fadeOutStart := total - fadeOutDur
+	return fmt.Sprintf(",afade=t=in:st=0:d=%.3f,afade=t=out:st=%.3f:d=%.3f", fadeInDur, fadeOutStart, fadeOutDur)
 }
 
 func buildConcatenatedTrackFilter(labels []string, total float64, out string) string {
