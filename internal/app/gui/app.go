@@ -32,6 +32,8 @@ func Run() error {
 
 	outputPreview := widget.NewLabel(OutputPreviewText(baseCfg))
 	outputPreview.Wrapping = fyne.TextTruncate
+	outputPreviewAdvanced := widget.NewLabel(OutputPreviewText(baseCfg))
+	outputPreviewAdvanced.Wrapping = fyne.TextTruncate
 	defaultOutputFolderForInput := func(input string) string {
 		trimmed := strings.TrimSpace(input)
 		if trimmed == "" {
@@ -52,6 +54,7 @@ func Run() error {
 	refreshPreview := func() {
 		cfg := CollectConfiguration(baseCfg, form, options)
 		outputPreview.SetText(OutputPreviewText(cfg))
+		outputPreviewAdvanced.SetText(OutputPreviewText(cfg))
 	}
 	form.InputEntry.OnChanged = func(_ string) {
 		if outputAuto {
@@ -68,11 +71,73 @@ func Run() error {
 	options.OrderMode.OnChanged = func(_ string) { refreshPreview() }
 	options.OrderFile.OnChanged = func(_ string) { refreshPreview() }
 	options.Profile.OnChanged = func(_ string) { refreshPreview() }
+	if options.FPS30 != nil {
+		prev := options.FPS30.OnTapped
+		options.FPS30.OnTapped = func() {
+			if prev != nil {
+				prev()
+			}
+			refreshPreview()
+		}
+	}
+	if options.FPS60 != nil {
+		prev := options.FPS60.OnTapped
+		options.FPS60.OnTapped = func() {
+			if prev != nil {
+				prev()
+			}
+			refreshPreview()
+		}
+	}
+	if options.QualityLow != nil {
+		prev := options.QualityLow.OnTapped
+		options.QualityLow.OnTapped = func() {
+			if prev != nil {
+				prev()
+			}
+			refreshPreview()
+		}
+	}
+	if options.QualityMedium != nil {
+		prev := options.QualityMedium.OnTapped
+		options.QualityMedium.OnTapped = func() {
+			if prev != nil {
+				prev()
+			}
+			refreshPreview()
+		}
+	}
+	if options.QualityHigh != nil {
+		prev := options.QualityHigh.OnTapped
+		options.QualityHigh.OnTapped = func() {
+			if prev != nil {
+				prev()
+			}
+			refreshPreview()
+		}
+	}
 
-	var startBtn *widget.Button
+	var startBtnRender *widget.Button
+	var startBtnAdvanced *widget.Button
+	setStartButtonsEnabled := func(enabled bool) {
+		if startBtnRender != nil {
+			if enabled {
+				startBtnRender.Enable()
+			} else {
+				startBtnRender.Disable()
+			}
+		}
+		if startBtnAdvanced != nil {
+			if enabled {
+				startBtnAdvanced.Enable()
+			} else {
+				startBtnAdvanced.Disable()
+			}
+		}
+	}
 	startRender := func(localCfg GuiRunConfiguration) {
 		status.SetError("")
-		startBtn.Disable()
+		setStartButtonsEnabled(false)
 
 		go func(localCfg GuiRunConfiguration) {
 			err := StartRun(context.Background(), runner, state, localCfg, func(s RunStatus) {
@@ -87,10 +152,10 @@ func Run() error {
 				status.StopAnimation()
 				dialog.ShowError(fmt.Errorf("render failed: %w", err), w)
 			}
-			startBtn.Enable()
+			setStartButtonsEnabled(true)
 		}(localCfg)
 	}
-	startBtn = widget.NewButton("▶  Start Render", func() {
+	runFromUI := func() {
 		cfg := CollectConfiguration(baseCfg, form, options)
 		cfg.LaunchDirectory = ResolveLaunchDirectory()
 
@@ -118,7 +183,9 @@ func Run() error {
 		}
 
 		startRender(cfg)
-	})
+	}
+	startBtnRender = widget.NewButton("▶  Start Render", runFromUI)
+	startBtnAdvanced = widget.NewButton("▶  Start Render", runFromUI)
 
 	// Folder browse helpers
 	inputBrowse := widget.NewButton("📁", func() {
@@ -155,13 +222,14 @@ func Run() error {
 		widget.NewFormItem("Image duration (s)", imageDurRow),
 		widget.NewFormItem("Transition (s)", transitionRow),
 		widget.NewFormItem("FPS", options.FPSSelector),
+		widget.NewFormItem("Quality", options.QualitySelector),
 	)
-	renderTab := container.NewVBox(
-		renderForm,
+	renderActions := container.NewVBox(
 		widget.NewSeparator(),
-		startBtn,
+		startBtnRender,
 		outputPreview,
 	)
+	renderTab := container.NewBorder(nil, renderActions, nil, nil, renderForm)
 
 	// Advanced tab: encoder, order, exif options
 	advancedForm := widget.NewForm(
@@ -171,12 +239,18 @@ func Run() error {
 		widget.NewFormItem("Encoder", options.Encoder),
 		widget.NewFormItem("EXIF font size", options.ExifFontSize),
 	)
-	advancedTab := container.NewVBox(
+	advancedContent := container.NewVBox(
 		advancedForm,
 		options.ExifOverlay,
 		options.Overwrite,
 		options.DebugExif,
 	)
+	advancedActions := container.NewVBox(
+		widget.NewSeparator(),
+		startBtnAdvanced,
+		outputPreviewAdvanced,
+	)
+	advancedTab := container.NewBorder(nil, advancedActions, nil, nil, advancedContent)
 
 	tabs := container.NewAppTabs(
 		container.NewTabItem("Render", renderTab),

@@ -37,11 +37,12 @@ func TestBuildRenderCommandArgsMapsOptions(t *testing.T) {
 		ExifOverlay:   true,
 		ExifFontSize:  48,
 		Encoder:       "cpu",
+		Quality:       "medium",
 		Overwrite:     true,
 	}
 	args := gui.BuildRenderCommandArgs(cfg)
 	joined := strings.Join(args, " ")
-	for _, want := range []string{"render", "--input /tmp/in", "--profile fhd", "--image-effect kenburns-low", "--image-duration 4", "--transition-duration 1", "--fps 30", "--exif-overlay", "--exif-font-size 48", "--encoder cpu"} {
+	for _, want := range []string{"render", "--input /tmp/in", "--profile fhd", "--image-effect kenburns-low", "--image-duration 4", "--transition-duration 1", "--fps 30", "--exif-overlay", "--exif-font-size 48", "--encoder cpu", "--quality medium"} {
 		if !strings.Contains(joined, want) {
 			t.Fatalf("expected args to include %q, got %s", want, joined)
 		}
@@ -64,9 +65,9 @@ func TestValidatePreflightBlocksEmptyMediaFolder(t *testing.T) {
 }
 
 func TestOutputPreviewUsesProfileAutoFileName(t *testing.T) {
-	cfg := gui.GuiRunConfiguration{OutputFolder: filepath.Clean("/tmp/output"), Profile: "fhd", OutputFileName: "slideshow_fhd.mp4"}
+	cfg := gui.GuiRunConfiguration{OutputFolder: filepath.Clean("/tmp/output"), Profile: "fhd", Quality: "medium", FPS: 30, OutputFileName: "slideshow_fhd_medium_30fps.mp4"}
 	preview := gui.OutputPreviewText(cfg)
-	if !strings.Contains(preview, "slideshow_fhd.mp4") {
+	if !strings.Contains(preview, "slideshow_fhd_medium_30fps.mp4") {
 		t.Fatalf("expected auto filename in preview, got %s", preview)
 	}
 }

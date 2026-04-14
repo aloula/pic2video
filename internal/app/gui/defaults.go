@@ -3,6 +3,8 @@ package gui
 import (
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 )
 
 func ResolveLaunchDirectory() string {
@@ -28,23 +30,32 @@ func DefaultConfiguration() GuiRunConfiguration {
 		AudioSource:     "mp3",
 		ExifFontSize:    42,
 		Encoder:         "auto",
+		Quality:         "high",
 		Overwrite:       true,
-		OutputFileName:  defaultOutputFilename("uhd"),
+		OutputFileName:  defaultOutputFilename("uhd", "high", 60),
 		LaunchDirectory: launchDir,
 	}
 }
 
-func defaultOutputFilename(profileName string) string {
-	if profileName == "fhd" {
-		return "slideshow_fhd.mp4"
+func defaultOutputFilename(profileName, quality string, fps int) string {
+	profile := strings.ToLower(strings.TrimSpace(profileName))
+	if profile != "fhd" {
+		profile = "uhd"
 	}
-	return "slideshow_uhd.mp4"
+	q := strings.ToLower(strings.TrimSpace(quality))
+	if q != "low" && q != "medium" {
+		q = "high"
+	}
+	if fps <= 0 {
+		fps = 60
+	}
+	return "slideshow_" + profile + "_" + q + "_" + strconv.Itoa(fps) + "fps.mp4"
 }
 
 func ResolveOutputPath(cfg GuiRunConfiguration) string {
 	name := cfg.OutputFileName
 	if name == "" {
-		name = defaultOutputFilename(cfg.Profile)
+		name = defaultOutputFilename(cfg.Profile, cfg.Quality, cfg.FPS)
 	}
 	if cfg.OutputFolder == "" {
 		return filepath.Join(".", name)

@@ -16,7 +16,7 @@ import (
 )
 
 func newRenderCommand() *cobra.Command {
-	var input, profileName, imageEffect, orderMode, orderFile, encoder, audioSource string
+	var input, profileName, imageEffect, orderMode, orderFile, encoder, audioSource, quality string
 	var imageDur, transDur float64
 	var outputFPS int
 	var exifOverlay bool
@@ -38,7 +38,13 @@ func newRenderCommand() *cobra.Command {
 			if profileName == "" {
 				profileName = "uhd"
 			}
-			output := defaultOutputPath(profileName)
+			if outputFPS == 0 {
+				outputFPS = 60
+			}
+			if quality == "" {
+				quality = "high"
+			}
+			output := defaultOutputPath(profileName, quality, outputFPS)
 			if imageEffect == "" {
 				imageEffect = "static"
 			}
@@ -66,9 +72,6 @@ func newRenderCommand() *cobra.Command {
 			assets, err := fsio.ListMixedAssets(input)
 			if err != nil {
 				return &renderjob.ClassifiedError{Class: renderjob.ErrInputValidation, Msg: "failed to read input assets", Err: err}
-			}
-			if outputFPS == 0 {
-				outputFPS = 60
 			}
 			audioAssets, err := fsio.ListMP3Assets(input)
 			if err != nil {
@@ -156,6 +159,7 @@ func newRenderCommand() *cobra.Command {
 				RequestedEncode:    encoder,
 				FFmpegBin:          ffmpegBin,
 				FFprobeBin:         ffprobeBin,
+				Quality:            quality,
 			}, assets)
 			if err != nil {
 				return err
@@ -180,6 +184,7 @@ func newRenderCommand() *cobra.Command {
 	cmd.Flags().StringVar(&orderMode, "order", "name", "Ordering mode: name|time|exif|explicit (default: name)")
 	cmd.Flags().StringVar(&orderFile, "order-file", "", "Path to explicit order manifest file")
 	cmd.Flags().StringVar(&audioSource, "audio-source", "mp3", "Audio source: mp3|video|mix (default: mp3)")
+	cmd.Flags().StringVar(&quality, "quality", "high", "Rendering quality: low|medium|high (default: high)")
 	cmd.Flags().BoolVar(&exifOverlay, "exif-overlay", false, "Enable EXIF metadata footer overlay")
 	cmd.Flags().IntVar(&exifFontSize, "exif-font-size", 42, "EXIF overlay font size (36-60)")
 	cmd.Flags().BoolVar(&debugExif, "debug-exif", false, "Print extracted EXIF values for each image before rendering")
@@ -192,12 +197,20 @@ func newRenderCommand() *cobra.Command {
 	return cmd
 }
 
-func defaultOutputPath(profileName string) string {
-	profileName = strings.ToLower(strings.TrimSpace(profileName))
-	if profileName == "fhd" {
-		return filepath.Join("output", "slideshow_fhd.mp4")
+func defaultOutputPath(profileName, quality string, fps int) string {
+	profile := strings.ToLower(strings.TrimSpace(profileName))
+	if profile != "fhd" {
+		profile = "uhd"
 	}
-	return filepath.Join("output", "slideshow_uhd.mp4")
+	q := strings.ToLower(strings.TrimSpace(quality))
+	if q != "low" && q != "medium" {
+		q = "high"
+	}
+	if fps <= 0 {
+		fps = 60
+	}
+	name := fmt.Sprintf("slideshow_%s_%s_%dfps.mp4", profile, q, fps)
+	return filepath.Join("output", name)
 }
 
 func countAssetsByType(assets []media.Asset, mediaType string) int {

@@ -27,6 +27,7 @@ type GuiRunConfiguration struct {
 	ExifFontSize    int
 	DebugExif       bool
 	Encoder         string
+	Quality         string
 	Overwrite       bool
 	FFmpegBin       string
 	FFprobeBin      string

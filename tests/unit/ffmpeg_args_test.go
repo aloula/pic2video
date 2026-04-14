@@ -282,8 +282,8 @@ func TestBuildRenderCommandArgsCPUQualityTuning(t *testing.T) {
 	assets := []media.Asset{{Path: "a.jpg", MediaType: media.MediaTypeImage}, {Path: "b.jpg", MediaType: media.MediaTypeImage}}
 	args := ffmpeg.BuildRenderCommandArgsWithEffect("out.mp4", assets, "static", 5, 1, 1920, 1080, "libx264")
 	joined := strings.Join(args, " ")
-	if !strings.Contains(joined, "-b:v 6M") || !strings.Contains(joined, "-maxrate 8M") || !strings.Contains(joined, "-bufsize 4M") {
-		t.Fatalf("expected improved FHD bitrate tier, got: %s", joined)
+	if !strings.Contains(joined, "-b:v 10M") || !strings.Contains(joined, "-maxrate 12M") || !strings.Contains(joined, "-bufsize 6M") {
+		t.Fatalf("expected high-quality FHD bitrate tier (default), got: %s", joined)
 	}
 	if !strings.Contains(joined, "-preset slower") || !strings.Contains(joined, "-crf 16") {
 		t.Fatalf("expected libx264 quality controls (preset+crf), got: %s", joined)
@@ -294,8 +294,8 @@ func TestBuildRenderCommandArgsNVENCQualityTuning(t *testing.T) {
 	assets := []media.Asset{{Path: "a.jpg", MediaType: media.MediaTypeImage}, {Path: "b.jpg", MediaType: media.MediaTypeImage}}
 	args := ffmpeg.BuildRenderCommandArgsWithEffect("out.mp4", assets, "static", 5, 1, 3840, 2160, "h264_nvenc")
 	joined := strings.Join(args, " ")
-	if !strings.Contains(joined, "-b:v 20M") || !strings.Contains(joined, "-maxrate 24M") || !strings.Contains(joined, "-bufsize 12M") {
-		t.Fatalf("expected improved UHD bitrate tier, got: %s", joined)
+	if !strings.Contains(joined, "-b:v 35M") || !strings.Contains(joined, "-maxrate 40M") || !strings.Contains(joined, "-bufsize 20M") {
+		t.Fatalf("expected high-quality UHD bitrate tier (default), got: %s", joined)
 	}
 	if !strings.Contains(joined, "-preset p4") || !strings.Contains(joined, "-rc vbr") || !strings.Contains(joined, "-cq 19") {
 		t.Fatalf("expected nvenc quality controls (preset+rc+cq), got: %s", joined)
@@ -445,5 +445,77 @@ func TestBuildRenderCommandArgsOverlaySkipsVideoSlots(t *testing.T) {
 	}
 	if strings.Contains(joined, "Unknown - Unknown - Unknown") {
 		t.Fatalf("did not expect unknown fallback line for explicitly skipped video slot, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsQualityHighFHD(t *testing.T) {
+	assets := []media.Asset{{Path: "a.jpg", MediaType: media.MediaTypeImage}, {Path: "b.jpg", MediaType: media.MediaTypeImage}}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSourceAndQuality("out.mp4", assets, nil, "static", 5, 1, 1920, 1080, "libx264", 60, "mp3", "high")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "-b:v 10M") || !strings.Contains(joined, "-maxrate 12M") || !strings.Contains(joined, "-bufsize 6M") {
+		t.Fatalf("expected high FHD bitrate tier, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-crf 16") {
+		t.Fatalf("expected high crf=16 for cpu encoder, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsQualityMediumFHD(t *testing.T) {
+	assets := []media.Asset{{Path: "a.jpg", MediaType: media.MediaTypeImage}, {Path: "b.jpg", MediaType: media.MediaTypeImage}}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSourceAndQuality("out.mp4", assets, nil, "static", 5, 1, 1920, 1080, "libx264", 60, "mp3", "medium")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "-b:v 6M") || !strings.Contains(joined, "-maxrate 8M") || !strings.Contains(joined, "-bufsize 4M") {
+		t.Fatalf("expected medium FHD bitrate tier, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-crf 20") {
+		t.Fatalf("expected medium crf=20 for cpu encoder, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsQualityLowFHD(t *testing.T) {
+	assets := []media.Asset{{Path: "a.jpg", MediaType: media.MediaTypeImage}, {Path: "b.jpg", MediaType: media.MediaTypeImage}}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSourceAndQuality("out.mp4", assets, nil, "static", 5, 1, 1920, 1080, "libx264", 60, "mp3", "low")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "-b:v 3M") || !strings.Contains(joined, "-maxrate 4M") || !strings.Contains(joined, "-bufsize 2M") {
+		t.Fatalf("expected low FHD bitrate tier, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-crf 24") {
+		t.Fatalf("expected low crf=24 for cpu encoder, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsQualityHighUHD(t *testing.T) {
+	assets := []media.Asset{{Path: "a.jpg", MediaType: media.MediaTypeImage}, {Path: "b.jpg", MediaType: media.MediaTypeImage}}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSourceAndQuality("out.mp4", assets, nil, "static", 5, 1, 3840, 2160, "h264_nvenc", 60, "mp3", "high")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "-b:v 35M") || !strings.Contains(joined, "-maxrate 40M") || !strings.Contains(joined, "-bufsize 20M") {
+		t.Fatalf("expected high UHD bitrate tier, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-cq 19") {
+		t.Fatalf("expected high cq=19 for nvenc encoder, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsQualityMediumUHD(t *testing.T) {
+	assets := []media.Asset{{Path: "a.jpg", MediaType: media.MediaTypeImage}, {Path: "b.jpg", MediaType: media.MediaTypeImage}}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSourceAndQuality("out.mp4", assets, nil, "static", 5, 1, 3840, 2160, "h264_nvenc", 60, "mp3", "medium")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "-b:v 20M") || !strings.Contains(joined, "-maxrate 24M") || !strings.Contains(joined, "-bufsize 12M") {
+		t.Fatalf("expected medium UHD bitrate tier, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-cq 23") {
+		t.Fatalf("expected medium cq=23 for nvenc encoder, got: %s", joined)
+	}
+}
+
+func TestBuildRenderCommandArgsQualityLowUHD(t *testing.T) {
+	assets := []media.Asset{{Path: "a.jpg", MediaType: media.MediaTypeImage}, {Path: "b.jpg", MediaType: media.MediaTypeImage}}
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSourceAndQuality("out.mp4", assets, nil, "static", 5, 1, 3840, 2160, "h264_nvenc", 60, "mp3", "low")
+	joined := strings.Join(args, " ")
+	if !strings.Contains(joined, "-b:v 8M") || !strings.Contains(joined, "-maxrate 10M") || !strings.Contains(joined, "-bufsize 5M") {
+		t.Fatalf("expected low UHD bitrate tier, got: %s", joined)
+	}
+	if !strings.Contains(joined, "-cq 27") {
+		t.Fatalf("expected low cq=27 for nvenc encoder, got: %s", joined)
 	}
 }

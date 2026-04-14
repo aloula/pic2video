@@ -193,7 +193,7 @@ func (s *Service) Run(ctx context.Context, job RenderJob) (RenderSummary, error)
 			overlayLines = append(overlayLines, FormatExifOverlayLine(exif))
 		}
 	}
-	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSource(
+	args := ffmpeg.BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSourceAndQuality(
 		job.OutputPath,
 		job.InputAssets,
 		job.AudioAssets,
@@ -205,6 +205,7 @@ func (s *Service) Run(ctx context.Context, job RenderJob) (RenderSummary, error)
 		job.EffectiveEncoder,
 		job.OutputFPS,
 		job.AudioSource,
+		job.Quality,
 		ffmpeg.OverlayOptions{
 			Enabled:        job.ExifOverlayEnabled,
 			FontSize:       job.ExifFontSize,

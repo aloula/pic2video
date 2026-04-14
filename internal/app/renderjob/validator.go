@@ -24,6 +24,9 @@ func ValidateJob(job RenderJob) error {
 	if job.AudioSource != "" && job.AudioSource != "mp3" && job.AudioSource != "video" && job.AudioSource != "mix" {
 		return &ClassifiedError{Class: ErrInvalidArguments, Msg: "audio source must be one of mp3|video|mix"}
 	}
+	if job.Quality != "" && job.Quality != "low" && job.Quality != "medium" && job.Quality != "high" {
+		return &ClassifiedError{Class: ErrInvalidArguments, Msg: "quality must be one of low|medium|high"}
+	}
 	if _, err := os.Stat(job.OutputPath); err == nil && !job.Overwrite {
 		return &ClassifiedError{Class: ErrInputValidation, Msg: "output file already exists (use --overwrite)"}
 	}

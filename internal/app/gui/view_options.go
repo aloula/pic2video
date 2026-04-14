@@ -20,6 +20,10 @@ type OptionsView struct {
 	FPS30           *widget.Button
 	FPS60           *widget.Button
 	FPSSelector     fyne.CanvasObject
+	QualityLow      *widget.Button
+	QualityMedium   *widget.Button
+	QualityHigh     *widget.Button
+	QualitySelector fyne.CanvasObject
 	ExifOverlay     *widget.Check
 	ExifFontSize    *widget.Entry
 	OrderMode       *widget.Select
@@ -86,6 +90,36 @@ func NewOptionsView(cfg GuiRunConfiguration) *OptionsView {
 		setFPSSelection(60)
 	}
 	fpsSelector := container.NewHBox(fps30, fps60)
+
+	qualityLow := widget.NewButton("low", nil)
+	qualityMedium := widget.NewButton("medium", nil)
+	qualityHigh := widget.NewButton("high", nil)
+	setQualitySelection := func(q string) {
+		qualityLow.Importance = widget.MediumImportance
+		qualityMedium.Importance = widget.MediumImportance
+		qualityHigh.Importance = widget.MediumImportance
+		switch q {
+		case "low":
+			qualityLow.Importance = widget.HighImportance
+		case "medium":
+			qualityMedium.Importance = widget.HighImportance
+		default:
+			qualityHigh.Importance = widget.HighImportance
+		}
+		qualityLow.Refresh()
+		qualityMedium.Refresh()
+		qualityHigh.Refresh()
+	}
+	qualityLow.OnTapped = func() { setQualitySelection("low") }
+	qualityMedium.OnTapped = func() { setQualitySelection("medium") }
+	qualityHigh.OnTapped = func() { setQualitySelection("high") }
+	selectedQuality := strings.TrimSpace(cfg.Quality)
+	if selectedQuality == "" {
+		selectedQuality = "high"
+	}
+	setQualitySelection(selectedQuality)
+	qualitySelector := container.NewHBox(qualityLow, qualityMedium, qualityHigh)
+
 	exifOverlay := widget.NewCheck("EXIF overlay", nil)
 	exifOverlay.SetChecked(cfg.ExifOverlay)
 	exifFont := widget.NewEntry()
@@ -126,6 +160,7 @@ func NewOptionsView(cfg GuiRunConfiguration) *OptionsView {
 		widget.NewLabel("Image duration (s)"), container.NewBorder(nil, nil, nil, imageDurValue, imageDur),
 		widget.NewLabel("Transition (s)"), container.NewBorder(nil, nil, nil, transitionValue, transition),
 		widget.NewLabel("FPS"), fpsSelector,
+		widget.NewLabel("Quality"), qualitySelector,
 		exifOverlay,
 		widget.NewLabel("EXIF font size"), exifFont,
 		widget.NewLabel("Order mode"), orderMode,
@@ -138,7 +173,9 @@ func NewOptionsView(cfg GuiRunConfiguration) *OptionsView {
 	return &OptionsView{
 		Profile: profile, ImageEffect: imageEffect, ImageDur: imageDur, ImageDurValue: imageDurValue,
 		Transition: transition, TransitionValue: transitionValue,
-		FPS30: fps30, FPS60: fps60, FPSSelector: fpsSelector, ExifOverlay: exifOverlay,
+		FPS30: fps30, FPS60: fps60, FPSSelector: fpsSelector,
+		QualityLow: qualityLow, QualityMedium: qualityMedium, QualityHigh: qualityHigh, QualitySelector: qualitySelector,
+		ExifOverlay:  exifOverlay,
 		ExifFontSize: exifFont, OrderMode: orderMode, OrderFile: orderFile,
 		AudioSource: audioSource, Encoder: encoder, Overwrite: overwrite, DebugExif: debugExif, Container: c,
 	}

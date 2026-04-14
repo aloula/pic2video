@@ -34,6 +34,10 @@ func BuildRenderCommandArgsWithEffectAndAudioAndFPS(outputPath string, assets []
 }
 
 func BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSource(outputPath string, assets []media.Asset, audioAssets []string, imageEffect string, imageDur, transitionDur float64, width, height int, encoder string, outputFPS int, audioSource string, overlays ...OverlayOptions) []string {
+	return BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSourceAndQuality(outputPath, assets, audioAssets, imageEffect, imageDur, transitionDur, width, height, encoder, outputFPS, audioSource, "high", overlays...)
+}
+
+func BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSourceAndQuality(outputPath string, assets []media.Asset, audioAssets []string, imageEffect string, imageDur, transitionDur float64, width, height int, encoder string, outputFPS int, audioSource string, quality string, overlays ...OverlayOptions) []string {
 	hasVideo := false
 	for _, a := range assets {
 		if a.MediaType == media.MediaTypeVideo {
@@ -97,8 +101,8 @@ func BuildRenderCommandArgsWithEffectAndAudioAndFPSAndSource(outputPath string, 
 		"-map", "[vlast]",
 		"-c:v", encoder,
 	)
-	args = append(args, bitrateArgs(width, height)...)
-	args = append(args, encoderQualityArgs(encoder)...)
+	args = append(args, bitrateArgs(width, height, quality)...)
+	args = append(args, encoderQualityArgs(encoder, quality)...)
 	args = append(args,
 		"-pix_fmt", "yuv420p",
 		"-movflags", "+faststart",
@@ -214,32 +218,57 @@ func buildGlobalFadeFilter(assets []media.Asset, imageDur, transitionDur float64
 	return fmt.Sprintf("fade=t=in:st=0:d=%.3f,fade=t=out:st=%.3f:d=%.3f", fadeDur, fadeOutStart, fadeDur)
 }
 
-func bitrateArgs(width, height int) []string {
+func bitrateArgs(width, height int, quality string) []string {
 	var target, maxrate, bufsize string
-	if width*height >= 3840*2160 {
-		target, maxrate, bufsize = "20M", "24M", "12M"
-	} else {
-		target, maxrate, bufsize = "6M", "8M", "4M"
+	isUHD := width*height >= 3840*2160
+	switch strings.ToLower(strings.TrimSpace(quality)) {
+	case "low":
+		if isUHD {
+			target, maxrate, bufsize = "8M", "10M", "5M"
+		} else {
+			target, maxrate, bufsize = "3M", "4M", "2M"
+		}
+	case "medium":
+		if isUHD {
+			target, maxrate, bufsize = "20M", "24M", "12M"
+		} else {
+			target, maxrate, bufsize = "6M", "8M", "4M"
+		}
+	default: // high
+		if isUHD {
+			target, maxrate, bufsize = "35M", "40M", "20M"
+		} else {
+			target, maxrate, bufsize = "10M", "12M", "6M"
+		}
 	}
 	return []string{"-b:v", target, "-maxrate", maxrate, "-bufsize", bufsize}
 }
 
-func encoderQualityArgs(encoder string) []string {
+func encoderQualityArgs(encoder, quality string) []string {
 	e := strings.ToLower(strings.TrimSpace(encoder))
+	var crf, cq string
+	switch strings.ToLower(strings.TrimSpace(quality)) {
+	case "low":
+		crf, cq = "24", "27"
+	case "medium":
+		crf, cq = "20", "23"
+	default: // high
+		crf, cq = "16", "19"
+	}
 	if strings.Contains(e, "nvenc") {
 		return []string{
 			// Balanced defaults: materially faster than quality-first p6/vbr_hq
 			// while keeping good visual quality for slideshow content.
 			"-preset", "p4",
 			"-rc", "vbr",
-			"-cq", "19",
+			"-cq", cq,
 			"-spatial_aq", "1",
 			"-aq-strength", "8",
 			"-temporal_aq", "1",
 		}
 	}
 	// libx264 (or cpu aliases in tests): quality-first VBR.
-	return []string{"-preset", "slower", "-crf", "16"}
+	return []string{"-preset", "slower", "-crf", crf}
 }
 
 func assetSlotDuration(asset media.Asset, imageDur float64) float64 {

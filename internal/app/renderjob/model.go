@@ -28,6 +28,7 @@ type RenderJob struct {
 	OrderFile             string
 	RequestedEncoder      string
 	EffectiveEncoder      string
+	Quality               string
 	Warnings              []string
 	FFmpegBin             string
 	FFprobeBin            string

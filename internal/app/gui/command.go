@@ -62,6 +62,13 @@ func BuildRenderCommandArgs(cfg GuiRunConfiguration) []string {
 		enc = "auto"
 	}
 	args = append(args, "--encoder", enc)
+
+	quality := strings.TrimSpace(cfg.Quality)
+	if quality == "" {
+		quality = "high"
+	}
+	args = append(args, "--quality", quality)
+
 	args = append(args, "--overwrite", strconv.FormatBool(cfg.Overwrite))
 
 	if strings.TrimSpace(cfg.FFmpegBin) != "" {

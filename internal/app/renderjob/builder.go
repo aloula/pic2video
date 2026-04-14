@@ -24,6 +24,7 @@ type BuildOptions struct {
 	RequestedEncode    string
 	FFmpegBin          string
 	FFprobeBin         string
+	Quality            string
 }
 
 func BuildJob(opts BuildOptions, assets []media.Asset) (RenderJob, error) {
@@ -40,6 +41,10 @@ func BuildJob(opts BuildOptions, assets []media.Asset) (RenderJob, error) {
 	audioSource := opts.AudioSource
 	if audioSource == "" {
 		audioSource = "mp3"
+	}
+	quality := opts.Quality
+	if quality == "" {
+		quality = "high"
 	}
 	for _, a := range assets {
 		if a.MediaType == media.MediaTypeVideo {
@@ -70,5 +75,6 @@ func BuildJob(opts BuildOptions, assets []media.Asset) (RenderJob, error) {
 		RequestedEncoder:      opts.RequestedEncode,
 		FFmpegBin:             opts.FFmpegBin,
 		FFprobeBin:            opts.FFprobeBin,
+		Quality:               quality,
 	}, nil
 }

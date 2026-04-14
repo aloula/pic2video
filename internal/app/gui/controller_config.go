@@ -40,10 +40,18 @@ func CollectConfiguration(base GuiRunConfiguration, form *FormView, opts *Option
 	if cfg.AudioSource == "" {
 		cfg.AudioSource = "mp3"
 	}
+	switch {
+	case opts.QualityLow != nil && opts.QualityLow.Importance == widget.HighImportance:
+		cfg.Quality = "low"
+	case opts.QualityMedium != nil && opts.QualityMedium.Importance == widget.HighImportance:
+		cfg.Quality = "medium"
+	default:
+		cfg.Quality = "high"
+	}
 	cfg.Encoder = strings.TrimSpace(opts.Encoder.Selected)
 	cfg.Overwrite = opts.Overwrite.Checked
 	cfg.DebugExif = opts.DebugExif.Checked
-	cfg.OutputFileName = defaultOutputFilename(cfg.Profile)
+	cfg.OutputFileName = defaultOutputFilename(cfg.Profile, cfg.Quality, cfg.FPS)
 	cfg.OutputPath = ResolveOutputPath(cfg)
 	return cfg
 }
